@@ -35,7 +35,7 @@ jobs:
       # The branch being synced: main on schedule, the branch the run was started from otherwise.
       BASE_BRANCH: ${{ github.ref_name }}
     steps:
-      # SYNC_AI_TOKEN is a fine-grained token with Contents, Pull requests and Workflows write on
+      # SYNC_TOKEN is a fine-grained token with Contents, Pull requests and Workflows write on
       # this repo. GitHub refuses pushes that change .github/workflows made with the default
       # token, which happens whenever upstream edits its workflows. The token is not stored in
       # the checkout and is only in the environment of the steps that push, never the agent's.
@@ -47,13 +47,13 @@ jobs:
 
       - name: Let git push with the sync token
         env:
-          GH_TOKEN: ${{ secrets.SYNC_AI_TOKEN || github.token }}
+          GH_TOKEN: ${{ secrets.SYNC_TOKEN || github.token }}
         run: gh auth setup-git
 
       - name: Open the pull request and merge
         id: prep
         env:
-          GH_TOKEN: ${{ secrets.SYNC_AI_TOKEN || github.token }}
+          GH_TOKEN: ${{ secrets.SYNC_TOKEN || github.token }}
           UPSTREAM_REPO: BrandonKowalski/slot
           UPSTREAM_BRANCH: main
         run: python3 .github/sync/sync_upstream.py prepare
@@ -163,7 +163,7 @@ jobs:
         id: finish
         if: steps.verify.outcome == 'success'
         env:
-          GH_TOKEN: ${{ secrets.SYNC_AI_TOKEN || github.token }}
+          GH_TOKEN: ${{ secrets.SYNC_TOKEN || github.token }}
           UPSTREAM_REPO: BrandonKowalski/slot
           AGENT_MODEL: ${{ vars.AGENT_MODEL }}
           CHECKS: fmt=${{ steps.fmt.outcome }},clippy=${{ steps.clippy.outcome }},clippy_device=${{ steps.clippy_device.outcome }},device=${{ steps.device.outcome }},tests=${{ steps.tests.outcome }}
@@ -172,7 +172,7 @@ jobs:
       - name: Report the failure on the pull request
         if: failure() && steps.prep.outputs.pr != '' && steps.finish.outcome != 'failure'
         env:
-          GH_TOKEN: ${{ secrets.SYNC_AI_TOKEN || github.token }}
+          GH_TOKEN: ${{ secrets.SYNC_TOKEN || github.token }}
           PR: ${{ steps.prep.outputs.pr }}
           RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --body "The sync could not produce a usable resolution, so nothing was pushed to this pull request and main is unchanged. See $RUN"

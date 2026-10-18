@@ -38,7 +38,7 @@ that produced it. Read this before resolving a conflict.
      mark the pull request "do not merge".
   5. Nothing reaches `main` until the owner reviews and merges the pull request.
   Setup it needs: repo secret `OPENROUTER_API_KEY`, repo variable `AGENT_MODEL` (an OpenRouter
-  model id such as `vendor/model`, used as `openrouter/<AGENT_MODEL>`), and repo secret `SYNC_AI_TOKEN`, a
+  model id such as `vendor/model`, used as `openrouter/<AGENT_MODEL>`), and repo secret `SYNC_TOKEN`, a
   fine-grained token with Contents, Pull requests and Workflows write on this repo, because the
   default token cannot push upstream changes to `.github/workflows/`. Run it from Actions →
   sync-upstream → Run workflow. It does not tag or release.
