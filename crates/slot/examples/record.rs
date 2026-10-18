@@ -1,16 +1,26 @@
+#[cfg(target_os = "macos")]
 use std::io::Write;
+#[cfg(target_os = "macos")]
 use std::process::{Command, Stdio};
+#[cfg(target_os = "macos")]
 use std::time::Duration;
 
+#[cfg(target_os = "macos")]
 use slot::frontend::Frontend;
+#[cfg(target_os = "macos")]
 use slot_gfx::{blue_light_gain, Compositor, HeadlessSurface, OUT_H, OUT_W};
+#[cfg(target_os = "macos")]
 use slot_input::{Btn, InputSource, Millis, RawEvent};
+#[cfg(target_os = "macos")]
 use slot_power::SimPlatform;
 
+#[cfg(target_os = "macos")]
 const FPS: f64 = 60.0;
 
+#[cfg(target_os = "macos")]
 const CLOCK: i64 = 1_790_784_000;
 
+#[cfg(target_os = "macos")]
 enum Step {
     Wait(u32),
     Down(Btn),
@@ -19,6 +29,7 @@ enum Step {
     Cut,
 }
 
+#[cfg(target_os = "macos")]
 struct Clip {
     path: String,
     frames: std::sync::mpsc::Sender<Vec<u8>>,
@@ -27,6 +38,7 @@ struct Clip {
     written: u32,
 }
 
+#[cfg(target_os = "macos")]
 impl Clip {
     fn start(path: String) -> Clip {
         let mut ffmpeg = Command::new("ffmpeg")
@@ -67,6 +79,7 @@ impl Clip {
     }
 }
 
+#[cfg(target_os = "macos")]
 fn btn(name: &str) -> Btn {
     match name {
         "up" => Btn::Up,
@@ -88,6 +101,7 @@ fn btn(name: &str) -> Btn {
     }
 }
 
+#[cfg(target_os = "macos")]
 fn parse(script: &str) -> Vec<Step> {
     let mut steps = Vec::new();
     for line in script.lines() {
@@ -112,6 +126,7 @@ fn parse(script: &str) -> Vec<Step> {
     steps
 }
 
+#[cfg(target_os = "macos")]
 fn panel(pixels: &mut [u8], app: &slot::app::App, lit: u8) {
     let light = f32::from(app.brightness()) / f32::from(lit);
     let gain = blue_light_gain(app.blue_light()).map(|g| g * light);
@@ -125,15 +140,18 @@ fn panel(pixels: &mut [u8], app: &slot::app::App, lit: u8) {
     }
 }
 
+#[cfg(target_os = "macos")]
 #[derive(Default)]
 struct Scripted(Vec<RawEvent>);
 
+#[cfg(target_os = "macos")]
 impl InputSource for Scripted {
     fn poll(&mut self, _now: Millis) -> Vec<RawEvent> {
         std::mem::take(&mut self.0)
     }
 }
 
+#[cfg(target_os = "macos")]
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let [root, script, out] = args.as_slice() else {
@@ -206,3 +224,6 @@ fn main() {
         done.finish();
     }
 }
+
+#[cfg(not(target_os = "macos"))]
+fn main() {}
