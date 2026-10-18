@@ -48,7 +48,14 @@ jobs:
       - name: Let git push with the sync token
         env:
           GH_TOKEN: ${{ secrets.SYNC_TOKEN || github.token }}
-        run: gh auth setup-git
+          HAS_SYNC_TOKEN: ${{ secrets.SYNC_TOKEN != '' }}
+        run: |
+          if [ "$HAS_SYNC_TOKEN" = true ]; then
+            echo "Using the SYNC_TOKEN secret, which acts as $(gh api user --jq .login)"
+          else
+            echo "::warning::No SYNC_TOKEN repository secret is visible to this workflow; using the built-in token, which cannot open pull requests unless Actions may create them, and cannot push upstream workflow changes"
+          fi
+          gh auth setup-git
 
       - name: Open the pull request and merge
         id: prep
