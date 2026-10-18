@@ -40,7 +40,8 @@ REPO = os.environ.get("GITHUB_REPOSITORY", "Maxcimkj/slot-gb-custom")
 UPSTREAM = f"upstream/{UPSTREAM_BRANCH}"
 # The fork branch being synced: main, or a test branch when the workflow runs from one.
 BASE = os.environ.get("BASE_BRANCH") or "main"
-BRANCH_PREFIX = "sync/upstream-" if BASE == "main" else f"sync-test/{BASE}/upstream-"
+# Kept under sync/: a branch named after BASE would clash with BASE itself in git's ref tree.
+BRANCH_PREFIX = "sync/upstream-" if BASE == "main" else f"sync/{BASE}-upstream-"
 TEMP = Path(os.environ.get("RUNNER_TEMP", "/tmp"))
 STATE = TEMP / "sync-state.json"
 PROMPT = TEMP / "sync-prompt.md"
