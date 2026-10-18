@@ -16,12 +16,13 @@ verify
 
 finish
     Commit the merge with a record in rebase-log.md, push the branch and put the record, the
-    agent's notes and the check results in the pull request description. The pull request is
-    never merged here: merging it is the owner's approval.
+    agent's notes and the check results in the pull request description. With AUTO_MERGE=true
+    and every required check passed, merge the pull request (a merge commit, so the next sync
+    starts from this upstream); otherwise leave it for the owner to merge.
 
 Upstream wins: its code is kept and the fork's changes are re-applied on top (FORK-NOTES.md).
 
-Environment: UPSTREAM_REPO, UPSTREAM_BRANCH, GH_TOKEN for the gh CLI, CHECKS (finish), and
+Environment: UPSTREAM_REPO, UPSTREAM_BRANCH, GH_TOKEN for the gh CLI, CHECKS and AUTO_MERGE (finish), and
 GitHub's GITHUB_OUTPUT, GITHUB_SERVER_URL, GITHUB_REPOSITORY, GITHUB_RUN_ID, RUNNER_TEMP.
 """
 import datetime
@@ -309,12 +310,21 @@ def finish():
         f"{len(state['upstream_commits'])} upstream commits, {len(state['auto']) + len(state['text'])} "
         f"conflicted file(s). Pull request: {state['pr']}\nDetails in rebase-log.md.")
     git("push", "origin", f"HEAD:refs/heads/{state['branch']}")
-    status = ("**All required checks passed. Review the changes and merge this pull request to sync "
-              f"`{BASE}`.**" if passed else
-              "**Required checks failed: do not merge as is.** Fix the branch "
-              f"`{state['branch']}` (or close this and run the sync again).")
+    merge = passed and os.environ.get("AUTO_MERGE") == "true"
+    if merge:
+        status = f"**All required checks passed; the sync workflow merged this pull request into `{BASE}`.**"
+    elif passed:
+        status = f"**All required checks passed. Review the changes and merge this pull request to sync `{BASE}`.**"
+    else:
+        status = ("**Required checks failed: do not merge as is.** Fix the branch "
+                  f"`{state['branch']}` (or close this and run the sync again).")
     gh("pr", "edit", state["pr"], "--body", f"{status}\n\n{entry}")
-    output(passed=str(passed).lower())
+    if merge:
+        # A merge commit, never squash or rebase: the next sync finds what is new upstream from
+        # where upstream's history joins the base branch. --match-head-commit merges exactly the
+        # commit that was checked, and fails instead if anyone pushed to the branch meanwhile.
+        gh("pr", "merge", state["pr"], "--merge", "--delete-branch", "--match-head-commit", git("rev-parse", "HEAD"))
+    output(passed=str(passed).lower(), merged=str(merge).lower())
     if not passed:
         sys.exit("Required checks failed; the attempt is pushed to the pull request for a person to fix")
 

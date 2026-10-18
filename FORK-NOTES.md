@@ -17,7 +17,7 @@ that produced it. Read this before resolving a conflict.
   `v1.7.0-gp-custom` on `16c72c7`.
 - **Sync model:** upstream `main` is merged into the fork's `main` through a pull request, the
   way GitHub's Sync fork → Open pull request does it; history is never rewritten. A coding agent
-  resolves the pull request, and the owner approves it by merging.
+  resolves the pull request, and the workflow merges it once every required check passes.
   `.github/workflows/sync-upstream.yml` does this daily (05:17 UTC) and on demand:
   1. `.github/sync/sync_upstream.py prepare` copies upstream's `main` to `sync/upstream-<sha>` in
      the fork and opens a pull request from it into `main`; GitHub shows it as conflicted when the
@@ -36,7 +36,10 @@ that produced it. Read this before resolving a conflict.
      each conflict, the agent's notes, the check results), pushes the branch, and puts the same
      record in the pull request description. Failed required checks still push the attempt and
      mark the pull request "do not merge".
-  5. Nothing reaches `main` until the owner reviews and merges the pull request.
+  5. With every required check passed, the workflow merges the pull request with a merge commit
+     (never squash or rebase: the next sync finds what is new from where upstream's history
+     joins `main`). Set the repository variable `SYNC_AUTO_MERGE` to `false` to review and merge
+     by hand instead; then use "Create a merge commit" too.
   Setup it needs: repo secret `OPENROUTER_API_KEY`, repo variable `AGENT_MODEL` (an OpenRouter
   model id such as `vendor/model`, used as `openrouter/<AGENT_MODEL>`), and repo secret `SYNC_TOKEN`, a
   fine-grained token with Contents, Pull requests and Workflows write on this repo, because the

@@ -4,8 +4,9 @@ name: sync-upstream
 # request, and has the OpenCode agent (any OpenRouter model) resolve it: copies upstream's main to
 # sync/upstream-<sha>, opens a pull request into main, merges main into it, lets the agent resolve
 # conflicts and fix the build (upstream wins, fork changes re-applied on top), runs the checks,
-# and pushes the result to the pull request with a description of every resolution. It never
-# merges: merging the pull request is the owner's approval. See FORK-NOTES.md.
+# and pushes the result to the pull request with a description of every resolution. When every
+# required check passed it merges the pull request; set the repository variable SYNC_AUTO_MERGE
+# to false to leave that to the owner instead. See FORK-NOTES.md.
 
 on:
   schedule:
@@ -173,6 +174,7 @@ jobs:
           GH_TOKEN: ${{ secrets.SYNC_TOKEN || github.token }}
           UPSTREAM_REPO: BrandonKowalski/slot
           AGENT_MODEL: ${{ vars.AGENT_MODEL }}
+          AUTO_MERGE: ${{ vars.SYNC_AUTO_MERGE != 'false' }}
           CHECKS: fmt=${{ steps.fmt.outcome }},clippy=${{ steps.clippy.outcome }},clippy_device=${{ steps.clippy_device.outcome }},device=${{ steps.device.outcome }},tests=${{ steps.tests.outcome }}
         run: python3 .github/sync/sync_upstream.py finish
 
@@ -192,11 +194,12 @@ jobs:
           UPSTREAM: ${{ steps.prep.outputs.upstream }}
           CONFLICTS: ${{ steps.prep.outputs.conflicts }}
           PASSED: ${{ steps.finish.outputs.passed }}
+          MERGED: ${{ steps.finish.outputs.merged }}
         run: |
           {
             echo "### Upstream sync"
             if [ "$CHANGED" = "true" ] && [ -n "$PASSED" ]; then
-              echo "Upstream \`$UPSTREAM\` merged with $CONFLICTS conflicted file(s) for the agent; required checks passed: $PASSED. Review and merge: $PR"
+              echo "Upstream \`$UPSTREAM\` merged with $CONFLICTS conflicted file(s) for the agent; required checks passed: $PASSED; merged by the workflow: ${MERGED:-false}. $PR"
               echo
               awk '/^## / { n++ } n == 1 { print }' rebase-log.md
             elif [ "$CHANGED" = "false" ] && [ -n "$PR" ]; then
