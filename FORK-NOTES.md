@@ -15,10 +15,33 @@ that produced it. Read this before resolving a conflict.
 - **Base:** upstream `e5b12ad Add RG35XX-H to the device list, closes #98`, which is after the
   upstream `v1.7.0` tag. Fork releases are tagged `v<upstream version>-gp-custom[.N]`, first one
   `v1.7.0-gp-custom` on `16c72c7`.
-- **Sync model:** fork commits sit on top of upstream `main` and are rebased onto it, never merged.
-  The plan is a scheduled workflow that mirrors upstream and rebases; a conflict fails the job,
-  leaves `main` untouched, and is resolved by an agent in a pull request. That workflow does not
-  exist yet.
+- **Sync model:** upstream `main` is merged into the fork's `main` through a pull request, the
+  way GitHub's Sync fork → Open pull request does it; history is never rewritten. A coding agent
+  resolves the pull request, and the owner approves it by merging.
+  `.github/workflows/sync-upstream.yml` does this daily (05:17 UTC) and on demand:
+  1. `.github/sync/sync_upstream.py prepare` copies upstream's `main` to `sync/upstream-<sha>` in
+     the fork and opens a pull request from it into `main`; GitHub shows it as conflicted when the
+     fork's changes clash. A newer upstream closes an older waiting sync pull request; the same
+     upstream is never synced twice while its pull request waits.
+  2. It merges `main` into that branch, as GitHub's Resolve conflicts button does. Binary files
+     and files one side deleted take upstream's state. Text conflicts go to the OpenCode agent
+     running an OpenRouter model, which reads this file, resolves them following section 3
+     (upstream wins, the fork change is re-applied on top) and runs fmt, clippy, the device build
+     and tests until they pass. It may only run `cargo` and read-only `git`, has no web access,
+     and may not edit `.github/`, this file or `rebase-log.md`.
+  3. `verify` refuses the result if conflict markers remain or protected files changed. The
+     workflow then runs the checks itself: fmt, clippy (host and device) and the device build are
+     required; `cargo test` is advisory because some tests need cores the runner does not have.
+  4. `finish` commits the merge with a record in `rebase-log.md` (upstream commits, fork commits,
+     each conflict, the agent's notes, the check results), pushes the branch, and puts the same
+     record in the pull request description. Failed required checks still push the attempt and
+     mark the pull request "do not merge".
+  5. Nothing reaches `main` until the owner reviews and merges the pull request.
+  Setup it needs: repo secret `OPENROUTER_API_KEY`, repo variable `AGENT_MODEL` (an OpenRouter
+  model id such as `vendor/model`, used as `openrouter/<AGENT_MODEL>`), and repo secret `SYNC_TOKEN`, a
+  fine-grained token with Contents, Pull requests and Workflows write on this repo, because the
+  default token cannot push upstream changes to `.github/workflows/`. Run it from Actions →
+  sync-upstream → Run workflow. It does not tag or release.
 
 ## 2. Fork-only files (cannot conflict)
 
@@ -26,6 +49,8 @@ that produced it. Read this before resolving a conflict.
 |---|---|
 | `FORK-NOTES.md` | This file |
 | `RELEASE.md` | How release zips are built and named. Kept out of `README.md` on purpose so syncs never touch it |
+| `rebase-log.md` | One record per automatic upstream sync, newest first, written by the sync workflow |
+| `.github/workflows/sync-upstream.yml`, `.github/sync/sync_upstream.py` | The automatic upstream sync pull request, resolved by the OpenCode agent (section 1) |
 | `assets/bezel_gb_fit.png`, `assets/bezel_gbc_fit.png` | Built-in Fit bezel art, compiled in |
 | `crates/slot-ui/tests/fit_bezel.rs` | Fit bezel PNGs only draw in the side bars |
 | `crates/slot/tests/render_fit_bezel.rs` | Full-frame render of the Fit bezel and of a card bezel in Fit |
@@ -90,7 +115,10 @@ no Fit and is never affected, even with `fit` saved for a GBA game.
    cores leave them black (`crates/slot/tests/render_picture_modes.rs` asserts it). The mock core
    (`crates/slot-retro/src/mock.rs`) fills the whole texture, so never test "pixel in the bar is
    black" against the mock.
-4. **Commit after resolving:** keep the fork change as one commit with its original message.
+4. **Commit after resolving:** the resolution goes in the merge commit on the sync branch; fork
+   commits are never rewritten. The workflow adds the sync's record to `rebase-log.md` in that
+   same commit. When fixing a sync pull request by hand, push to its `sync/upstream-<sha>`
+   branch and update the record in the description.
 
 ## 4. Verify after every sync
 
