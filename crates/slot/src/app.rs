@@ -1529,6 +1529,14 @@ impl App {
         video_mode::source_rect(self.platform, self.video_mode)
     }
 
+    pub fn fits_picture(&self) -> bool {
+        self.video_mode == VideoMode::Fit && self.platform != Platform::Gba
+    }
+
+    pub fn softens_picture(&self) -> bool {
+        self.fits_picture()
+    }
+
     fn slot_owns_the_shoulders(&self) -> bool {
         matches!(self.phase, Phase::Playing { .. }) && self.platform != Platform::Gba
     }
@@ -2337,12 +2345,12 @@ impl App {
                 Action::GbaDown(Btn::L1)
                     if self.slot_owns_the_shoulders() && !self.bound_to_game(Btn::L1) =>
                 {
-                    self.set_picture(VideoMode::Stretch)
+                    self.set_picture(self.video_mode.bigger())
                 }
                 Action::GbaDown(Btn::R1)
                     if self.slot_owns_the_shoulders() && !self.bound_to_game(Btn::R1) =>
                 {
-                    self.set_picture(VideoMode::Actual)
+                    self.set_picture(self.video_mode.smaller())
                 }
                 Action::Eject => self.eject(),
                 Action::GameMenu => self.game_menu_shortcut(),
