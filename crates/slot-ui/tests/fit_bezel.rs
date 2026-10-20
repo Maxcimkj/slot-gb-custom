@@ -8,7 +8,7 @@ const PICTURE: std::ops::Range<usize> = 93..627;
 #[test]
 fn the_fit_bezels_only_draw_in_the_side_bars() {
     for colour in [false, true] {
-        let rgba = fit_game_bezel_face(colour).expect("decode the fit bezel");
+        let rgba = fit_game_bezel_face(colour, W as u32, H as u32).expect("decode the fit bezel");
         assert_eq!(rgba.len(), W * H * 4);
         let alpha = |x: usize, y: usize| rgba[(y * W + x) * 4 + 3];
         let over = (0..H)
