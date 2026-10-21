@@ -1,4 +1,4 @@
-use slot_store::GbPalette;
+use slot_store::{GbColors, GbPalette};
 use slot_ui::{
     toast_face, toast_rect, Canvas, Draw, Hud, HudKind, QuickRow, TexId, Toast, ALARM_BAND_H,
     OUT_H, OUT_W, PLATE_H,
@@ -28,7 +28,7 @@ fn a_cart_gpsp_cannot_link_says_there_is_no_link() {
 fn the_banner_says_what_happened_and_never_what_is_on_screen() {
     let all = Toast::all();
     assert_eq!(
-        all[..18],
+        all[..19],
         [
             Toast::StateSaved,
             Toast::StateLoaded,
@@ -46,19 +46,21 @@ fn the_banner_says_what_happened_and_never_what_is_on_screen() {
             Toast::ShaderSimpletex,
             Toast::CardUnwritable,
             Toast::CardRepair,
+            Toast::CardRepairCharge,
             Toast::CardRepaired,
             Toast::CardRepairFailed,
         ],
         "a banner was added or dropped: every face is uploaded by its place in this list"
     );
-    let palettes = GbPalette::all().count();
+    let palettes = GbColors::all().count();
+    assert_eq!(palettes, 49);
     assert_eq!(
-        all[18..18 + palettes],
-        GbPalette::all().map(Toast::Palette).collect::<Vec<_>>()[..],
+        all[19..19 + palettes],
+        GbColors::all().map(Toast::Palette).collect::<Vec<_>>()[..],
         "the palette banners do not follow the fixed ones in palette order"
     );
     assert_eq!(
-        all[18 + palettes..],
+        all[19 + palettes..],
         QuickRow::ALL
             .into_iter()
             .filter(|r| r.binds())
@@ -191,7 +193,11 @@ fn a_toast_takes_the_band_from_the_bar() {
 #[test]
 fn a_palette_banner_names_the_palette_without_its_boot_combo() {
     let p = GbPalette::parse("GBC Dark Green →A").unwrap();
-    assert_eq!(Toast::Palette(p).text(), "GBC Dark Green");
+    assert_eq!(
+        Toast::Palette(GbColors::Palette(p)).text(),
+        "GBC Dark Green"
+    );
+    assert_eq!(Toast::Palette(GbColors::Auto).text(), "Auto");
 }
 
 fn band(h: &Hud, now: u64) -> Option<(f32, f32, [f32; 4])> {

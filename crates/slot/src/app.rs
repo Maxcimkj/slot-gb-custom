@@ -8,7 +8,7 @@ use slot_power::{Battery, Charge, LedState, LidPolicy, Power, RepairResult};
 use slot_retro::LinkChannel;
 use slot_store::{
     format_stamp, parse_stamp, read_slot_state, scan, write_slot_state, BezelPick, Cart, Core,
-    GbPalette, Platform, Recent, Shader, SlotState, StateEntry, StateRing, WallpaperPick,
+    GbColors, Platform, Recent, Shader, SlotState, StateEntry, StateRing, WallpaperPick,
     WallpaperTint, BLUE_LIGHT_MAX, BRIGHTNESS_MAX, FF_SPEEDS, RING_MAX, VOLUME_MAX,
 };
 use slot_ui::{
@@ -33,7 +33,7 @@ use slot_store::{
     Binding, CarouselKeys, Controls, Device, GameButton, Modifier, ShortcutKeys, LID_OFF_MIN,
 };
 
-pub const PRESS_A_BUTTON: &str = "Press a button";
+pub const RECORDING: &str = "Recording";
 pub const CLASH_MARK: &str = "!";
 
 #[derive(Copy, Clone, Debug)]
@@ -67,6 +67,8 @@ const AUTOSAVE_MS: Millis = 60_000;
 const CARD_CHECK_MS: Millis = 2_000;
 
 const BATTERY_CRITICAL: u8 = 5;
+
+const REPAIR_BATTERY_MIN: u8 = 20;
 
 const BATTERY_POLL_MS: Millis = 10_000;
 const MENU_REVEAL_MS: Millis = 180;
@@ -367,6 +369,8 @@ pub struct App {
     repair_prompt: bool,
     reset_prompt: Option<QuickRow>,
     reset_faces: Vec<(TexId, u32, u32)>,
+    delete_prompt: bool,
+    delete_faces: Vec<(TexId, u32, u32)>,
     act_at: Millis,
     root: Option<PathBuf>,
     state: SlotState,
@@ -382,7 +386,7 @@ pub struct App {
     core: Core,
     colour_pending: Option<bool>,
     palette_live: bool,
-    palette_pending: Option<GbPalette>,
+    palette_pending: Option<GbColors>,
     link_player: Option<u8>,
     platform: Platform,
     named_core: bool,
@@ -437,6 +441,7 @@ pub struct App {
     autosave_at: Millis,
     pending_save: Option<std::thread::JoinHandle<()>>,
     card_writes: Arc<crate::card_log::CardWrites>,
+    resume_unread: bool,
     card_read_only: bool,
     card_check_at: Millis,
     battery_at: Millis,
@@ -545,6 +550,8 @@ impl App {
             repair_prompt: false,
             reset_prompt: None,
             reset_faces: Vec::new(),
+            delete_prompt: false,
+            delete_faces: Vec::new(),
             act_at: 0,
             root: None,
             state: SlotState::default(),
@@ -614,6 +621,7 @@ impl App {
             autosave_at: AUTOSAVE_MS,
             pending_save: None,
             card_writes,
+            resume_unread: false,
             card_read_only: false,
             card_check_at: 0,
             battery_at: BATTERY_POLL_MS,
@@ -915,8 +923,8 @@ impl App {
         hidden
     }
 
-    pub fn gb_palette_label(&self) -> &'static str {
-        self.state.gb_palette.label()
+    pub fn gb_colors_label(&self) -> &'static str {
+        self.state.gb_colors().label()
     }
 
     pub fn set_quick_palette_faces(&mut self, dim: (TexId, u32, u32), lit: (TexId, u32, u32)) {
@@ -934,15 +942,24 @@ impl App {
             (QuickRow::Bezel, Platform::Gba) => QuickRow::GbaBezel,
             (QuickRow::Bezel, Platform::Gb) => QuickRow::GbBezel,
             (QuickRow::Bezel, Platform::Gbc) => QuickRow::GbcBezel,
+            (QuickRow::PlayBrightness, _) => QuickRow::Brightness,
+            (QuickRow::PlayBlueLight, _) => QuickRow::BlueLight,
             (row, _) => row,
         }
     }
 
     pub fn quick_value(&self, row: QuickRow) -> Option<QuickValue> {
         match row {
-            QuickRow::Shader | QuickRow::ColourCorrection => {
-                self.quick_value(self.playing_row(row))
-            }
+            QuickRow::Shader
+            | QuickRow::ColourCorrection
+            | QuickRow::PlayBrightness
+            | QuickRow::PlayBlueLight => self.quick_value(self.playing_row(row)),
+            QuickRow::Brightness => Some(QuickValue::level(self.state.brightness)),
+            QuickRow::BlueLight => Some(match self.state.blue_light {
+                0 => QuickValue::Off,
+                n => QuickValue::level(n),
+            }),
+            QuickRow::ScreenGeneral => None,
             QuickRow::FastForward => QuickValue::speed(self.state.ff_speed),
             QuickRow::FastForwardSound => Some(QuickValue::flag(self.state.ff_sound)),
             QuickRow::GbaColourCorrection => {
@@ -952,7 +969,6 @@ impl App {
             QuickRow::GbcColourCorrection => {
                 Some(QuickValue::flag(self.state.colour_correction_gbc))
             }
-            QuickRow::GbPalettes => Some(QuickValue::flag(self.state.gb_palettes)),
             QuickRow::GbaShader => Some(shader_value(self.state.shader_gba)),
             QuickRow::GbShader => Some(shader_value(self.state.shader_gb)),
             QuickRow::GbcShader => Some(shader_value(self.state.shader_gbc)),
@@ -997,6 +1013,7 @@ impl App {
             | QuickRow::PlayScreen
             | QuickRow::PlayGameplay
             | QuickRow::Palette
+            | QuickRow::GbPalette
             | QuickRow::ScreenGba
             | QuickRow::ScreenGbc
             | QuickRow::ScreenGb
@@ -1766,7 +1783,7 @@ impl App {
             .filter(|r| r.binds())
             .map(|r| self.bound_text(*r))
             .collect();
-        texts.push(PRESS_A_BUTTON.to_string());
+        texts.push(RECORDING.to_string());
         texts.sort();
         texts.dedup();
         texts
@@ -1788,7 +1805,7 @@ impl App {
                     return None;
                 }
                 let text = match self.capture_row() == Some(*r) {
-                    true => PRESS_A_BUTTON.to_string(),
+                    true => RECORDING.to_string(),
                     false => self.bound_text(*r),
                 };
                 self.binding_faces.get(&text).copied()
@@ -2095,10 +2112,20 @@ impl App {
     }
 
     pub fn repair_offered(&self) -> bool {
+        self.repair_possible() && self.charged_to_repair()
+    }
+
+    fn repair_possible(&self) -> bool {
         self.card_read_only
             && !self.repair_prompt
             && !self.shutting_down()
             && matches!(self.phase, Phase::Shelf | Phase::Playing { .. })
+    }
+
+    fn charged_to_repair(&self) -> bool {
+        self.battery.is_none_or(|b| {
+            b.percent >= REPAIR_BATTERY_MIN || matches!(b.charge, Charge::Charging | Charge::Full)
+        })
     }
 
     pub fn repair_prompt(&self) -> bool {
@@ -2163,8 +2190,27 @@ impl App {
         self.colour_pending.take()
     }
 
-    pub fn gb_palette(&self) -> Option<GbPalette> {
-        self.state.gb_palettes.then_some(self.state.gb_palette)
+    pub fn gb_colors(&self) -> GbColors {
+        self.state.gb_colors()
+    }
+
+    pub fn card_read(
+        &self,
+        what: &str,
+        read: std::io::Result<Option<Vec<u8>>>,
+    ) -> Option<Option<Vec<u8>>> {
+        match read {
+            Ok(bytes) => Some(bytes),
+            Err(e) => {
+                eprintln!("slot: {what} read: {e}");
+                self.card_writes.failed(what, &e);
+                None
+            }
+        }
+    }
+
+    pub fn set_resume_unread(&mut self, unread: bool) {
+        self.resume_unread = unread;
     }
 
     pub fn set_palette_live(&mut self, live: bool) {
@@ -2175,7 +2221,7 @@ impl App {
         self.palette_live
     }
 
-    pub fn take_gb_palette(&mut self) -> Option<GbPalette> {
+    pub fn take_gb_colors(&mut self) -> Option<GbColors> {
         self.palette_pending.take()
     }
 
@@ -2294,6 +2340,17 @@ impl App {
             }
             return;
         }
+        if self.delete_prompt {
+            match action {
+                Action::GbaDown(Btn::X) => {
+                    self.delete_prompt = false;
+                    self.delete_selected();
+                }
+                Action::GbaDown(Btn::B) => self.delete_prompt = false,
+                _ => {}
+            }
+            return;
+        }
         if action == Action::RepairCard {
             self.repair_prompt = self.repair_offered();
             return;
@@ -2368,7 +2425,10 @@ impl App {
                 Action::GbaDown(Btn::A) => self.load_selected(),
                 Action::GbaDown(Btn::B) | Action::Polaroids => self.close_polaroids(),
                 Action::GbaDown(Btn::X) => self.undo(self.now()),
-                Action::GbaDown(Btn::Y) => self.delete_selected(),
+                Action::GbaDown(Btn::Y) => {
+                    self.delete_prompt =
+                        self.polaroids.as_ref().and_then(|p| p.selected()).is_some()
+                }
                 _ => {}
             },
             Phase::About if action == Action::GbaDown(Btn::B) || action == Action::QuickMenu => {
@@ -2500,6 +2560,7 @@ impl App {
             }
             QuickRow::About => self.phase = Phase::About,
             QuickRow::Screen
+            | QuickRow::ScreenGeneral
             | QuickRow::Game
             | QuickRow::ScreenGba
             | QuickRow::ScreenGbc
@@ -2514,7 +2575,11 @@ impl App {
                     self.phase = Phase::QuickMenu { row };
                 }
             }
-            QuickRow::EjectSave
+            QuickRow::Brightness
+            | QuickRow::BlueLight
+            | QuickRow::PlayBrightness
+            | QuickRow::PlayBlueLight
+            | QuickRow::EjectSave
             | QuickRow::Turbo
             | QuickRow::Rewind
             | QuickRow::FastForward
@@ -2525,7 +2590,7 @@ impl App {
             | QuickRow::GbaShader
             | QuickRow::GbShader
             | QuickRow::GbcShader
-            | QuickRow::GbPalettes
+            | QuickRow::GbPalette
             | QuickRow::Rumble
             | QuickRow::LeftStick
             | QuickRow::Theme
@@ -2581,12 +2646,30 @@ impl App {
 
     fn change_setting(&mut self, row: QuickRow, right: bool) {
         let row = self.playing_row(row);
-        if row == QuickRow::Palette {
-            let to = match right {
-                true => self.state.gb_palette.next(),
-                false => self.state.gb_palette.prev(),
+        if let QuickRow::Brightness | QuickRow::BlueLight = row {
+            let (kind, now, max) = match row {
+                QuickRow::Brightness => {
+                    (HudKind::Brightness, self.state.brightness, BRIGHTNESS_MAX)
+                }
+                _ => (HudKind::BlueLight, self.state.blue_light, BLUE_LIGHT_MAX),
             };
-            self.state.gb_palette = to;
+            let floor = match kind {
+                HudKind::Brightness => 1,
+                _ => 0,
+            };
+            let to = match right {
+                true => up(now, 1, max).max(floor),
+                false => now.saturating_sub(1).max(floor).min(now),
+            };
+            self.set_level(kind, to);
+            return;
+        }
+        if let QuickRow::Palette | QuickRow::GbPalette = row {
+            let to = match right {
+                true => self.state.gb_colors().next(),
+                false => self.state.gb_colors().prev(),
+            };
+            self.state.set_gb_colors(to);
             self.palette_pending = Some(to);
             self.persist();
             return;
@@ -2681,10 +2764,14 @@ impl App {
             QuickRow::EjectSave => s.eject_save = !s.eject_save,
             QuickRow::Turbo => s.turbo = !s.turbo,
             QuickRow::Rewind => s.rewind = !s.rewind,
-            QuickRow::GbPalettes => s.gb_palettes = !s.gb_palettes,
             QuickRow::Theme => s.appearance = s.appearance.toggle(),
             QuickRow::WallpaperTint => s.wallpaper_tint = s.wallpaper_tint.step(right),
-            QuickRow::Wallpaper
+            QuickRow::ScreenGeneral
+            | QuickRow::Brightness
+            | QuickRow::BlueLight
+            | QuickRow::PlayBrightness
+            | QuickRow::PlayBlueLight
+            | QuickRow::Wallpaper
             | QuickRow::Recents
             | QuickRow::ShowTitles
             | QuickRow::DateTime
@@ -2700,6 +2787,7 @@ impl App {
             | QuickRow::Shader
             | QuickRow::ColourCorrection
             | QuickRow::Palette
+            | QuickRow::GbPalette
             | QuickRow::ScreenGba
             | QuickRow::ScreenGbc
             | QuickRow::ScreenGb
@@ -2796,10 +2884,10 @@ impl App {
         if let Action::PaletteNext | Action::PalettePrev = action {
             if self.palette_live && matches!(self.phase, Phase::Playing { .. }) {
                 let to = match action {
-                    Action::PalettePrev => self.state.gb_palette.prev(),
-                    _ => self.state.gb_palette.next(),
+                    Action::PalettePrev => self.state.gb_colors().prev(),
+                    _ => self.state.gb_colors().next(),
                 };
-                self.state.gb_palette = to;
+                self.state.set_gb_colors(to);
                 self.palette_pending = Some(to);
                 self.persist();
                 self.hud.toast(Toast::Palette(to), self.now());
@@ -2833,6 +2921,17 @@ impl App {
         if kind == HudKind::Volume {
             self.remember_volume();
         }
+        let unmuted = kind == HudKind::Volume && std::mem::take(self.muted_mut());
+        let moved = self.set_level(kind, value);
+        let (shown, now) = (self.hud_value(kind, value), self.now());
+        self.hud.show(kind, shown, self.muted(), now);
+        if unmuted && !moved {
+            self.persist_soon();
+        }
+        true
+    }
+
+    fn set_level(&mut self, kind: HudKind, value: u8) -> bool {
         let level = match kind {
             HudKind::Brightness => &mut self.state.brightness,
             HudKind::BlueLight => &mut self.state.blue_light,
@@ -2842,16 +2941,13 @@ impl App {
         };
         let moved = *level != value;
         *level = value;
-        let unmuted = kind == HudKind::Volume && std::mem::take(self.muted_mut());
-        let (shown, now) = (self.hud_value(kind, value), self.now());
-        self.hud.show(kind, shown, self.muted(), now);
         if let (HudKind::Brightness, Some(power)) = (kind, &mut self.power) {
             power.set_backlight(value);
         }
-        if moved || unmuted {
+        if moved {
             self.persist_soon();
         }
-        true
+        moved
     }
 
     fn remember_volume(&mut self) {
@@ -3295,11 +3391,12 @@ impl App {
             self.log_card(failing);
         }
         self.hud.set_alarm(failing, self.now());
-        self.hud.set_alarm_toast(if self.repair_offered() {
-            Toast::CardRepair
-        } else {
-            Toast::CardUnwritable
-        });
+        self.hud
+            .set_alarm_toast(match (self.repair_possible(), self.charged_to_repair()) {
+                (true, true) => Toast::CardRepair,
+                (true, false) => Toast::CardRepairCharge,
+                (false, _) => Toast::CardUnwritable,
+            });
         if self.now() >= self.battery_at {
             self.battery_at = self.now() + BATTERY_POLL_MS;
             self.battery = self.power.as_ref().and_then(|p| p.battery());
@@ -3502,7 +3599,7 @@ impl App {
         let Some(snapshot) = &self.snapshot else {
             return;
         };
-        if snapshot.resume_trusted() {
+        if snapshot.resume_trusted() || self.resume_unread {
             return;
         }
         if !self.named_core {
@@ -3598,6 +3695,9 @@ impl App {
         if let Some(row) = self.reset_prompt {
             return self.draw_prompt(&self.reset_prompt_faces(row), out);
         }
+        if self.delete_prompt {
+            return self.draw_prompt(&self.delete_faces, out);
+        }
         match &self.phase {
             Phase::SetClock {
                 picker, from_menu, ..
@@ -3620,7 +3720,7 @@ impl App {
                 wallpaper: self.quick_wallpaper_faces,
                 faces: self.quick_menu_faces.as_ref(),
                 ground: self.menu_ground(),
-                palette: None,
+                palette: self.quick_palette_faces,
                 gba_bezel: self.quick_bezel_faces[bezel_slot(Platform::Gba)],
                 gb_bezel: self.quick_bezel_faces[bezel_slot(Platform::Gb)],
                 gbc_bezel: self.quick_bezel_faces[bezel_slot(Platform::Gbc)],
@@ -4053,6 +4153,14 @@ impl App {
 
     pub fn set_repair_faces(&mut self, faces: Vec<(TexId, u32, u32)>) {
         self.repair_faces = faces;
+    }
+
+    pub fn set_delete_faces(&mut self, faces: Vec<(TexId, u32, u32)>) {
+        self.delete_faces = faces;
+    }
+
+    pub fn delete_prompt(&self) -> bool {
+        self.delete_prompt
     }
 
     pub fn set_reset_faces(&mut self, faces: Vec<(TexId, u32, u32)>) {
@@ -4500,6 +4608,7 @@ impl App {
         };
         let (state, sav) = trusted_write(snapshot.as_ref(), state, "eject");
         let state = state.filter(|_| self.state.eject_save);
+        self.state_writer.flush();
         match persist::eject(
             root,
             self.platform,
@@ -4507,11 +4616,12 @@ impl App {
             stem,
             state.as_deref(),
             sav.as_deref(),
+            &self.state,
         ) {
             Ok(()) => {
                 self.state.cart = None;
                 self.state.cart_platform = None;
-                self.card_writes.ok();
+                self.card_writes.ok("eject");
             }
             Err(e) => {
                 eprintln!("slot: eject: {e}");
@@ -5103,6 +5213,7 @@ impl App {
         };
         let cart = std::mem::take(cart);
         self.polaroids = None;
+        self.delete_prompt = false;
         self.phase = Phase::Playing { cart };
         if std::mem::take(&mut self.states_from_menu) {
             self.in_game_menu = Some(QuickRow::States);
@@ -5200,7 +5311,9 @@ impl App {
         let thumb = snapshot.thumb().unwrap_or_default();
         let stamp = free_stamp(&ring, self.wall_secs());
         let evicted = doomed(&ring);
-        if let Err(e) = ring.push(&state, &thumb, &stamp) {
+        let pushed = ring.push(&state, &thumb, &stamp);
+        self.card_writes.wrote("save state", &pushed);
+        if let Err(e) = pushed {
             eprintln!("slot: save: {e}");
             return;
         }

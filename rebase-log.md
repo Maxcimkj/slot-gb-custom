@@ -2,6 +2,54 @@
 
 One record per upstream sync, newest first. Written by `.github/workflows/sync-upstream.yml`; see `FORK-NOTES.md` for how the fork is kept.
 
+## 2026-10-21 10:17 UTC · upstream `f4b7bc3` → `842649e`
+
+Pull request: https://github.com/Maxcimkj/slot-gb-custom/pull/4
+Run: https://github.com/Maxcimkj/slot-gb-custom/actions/runs/39582423050
+
+### Upstream changes (11 commits)
+
+- `842649e` Spread Joy. (Brandon T. Kowalski)
+- `0ceac65` update changelog for v1.8.0 (Brandon T. Kowalski)
+- `fdfc5d1` Ask before deleting a save state, with X to delete and B to keep it (Brandon T. Kowalski)
+- `b4a54d3` End the in-game Screen page with brightness and blue light, three rows at a time, under a scroll bar (Brandon T. Kowalski)
+- `af9ff09` Flag only a single on START against a START chord, not one on its second button (Brandon T. Kowalski)
+- `0fa8ecc` Say RECORDING while a control waits for a button (Brandon T. Kowalski)
+- `6d8f8db` Put brightness, blue light and one live Palette row in the menus (Brandon T. Kowalski)
+- `e22101c` Wait out the WiFi unload in the repair test so its fake sleep cannot race it (Brandon T. Kowalski)
+- `b25c7a2` Let the card repair take as many fsck passes as FAT damage needs (Brandon T. Kowalski)
+- `c5de4cc` Keep the SD card safe through crashes, power offs and failed reads (Brandon T. Kowalski)
+- `ea438a0` Print the release version on the About sticker (Brandon T. Kowalski)
+
+### Fork changes kept on top (1 commits)
+
+- `0b46d92` Add new fit mode for gb, gbc and bezels
+
+### Conflicts
+
+- Resolved by OpenCode with deepseek/deepseek-v4.1-flash: `crates/slot/src/frontend.rs`
+
+#### Agent notes
+
+##### crates/slot/src/frontend.rs
+
+Upstream added the save-state delete UI to this file, which pulled `delete_legends` into the `slot_ui` import list; the rest of its changes here were unrelated to the fork. The fork adds `fit_game_bezel_face` to the same import list and uses it, along with a `fits` flag in `BezelSync`, to draw the Fit bezel and hide card bezels while fitted. The conflict was only in the import block, so I kept upstream's full list (including `delete_legends`) and inserted `fit_game_bezel_face` in alphabetical order; `cargo fmt --all` reflowed it to match. The fork's `BezelSync` field, `set_soft_picture` call and `(pick, fits)` match were already present and are unchanged.
+
+##### Checks
+
+`cargo fmt --all`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo clippy -p slot --no-default-features --features device -- -D warnings`, the device build, `python3 .github/sync/sync_upstream.py fork-tests` and `cargo test -p slot` all passed. The macOS-only Fit render tests were skipped on this Linux machine as expected.
+
+### Checks
+
+| Check | Result |
+|---|---|
+| `cargo fmt --all -- --check` | ✅ success |
+| `cargo clippy --workspace --all-targets -- -D warnings` | ✅ success |
+| `cargo clippy -p slot --no-default-features --features device -- -D warnings` | ✅ success |
+| `cargo build --profile device -p slot --no-default-features --features device` | ✅ success |
+| `sync_upstream.py fork-tests`: the fork's Fit tests (FORK-NOTES.md section 4) | ✅ success |
+| `cargo test --workspace --no-fail-fast` (advisory: some tests need cores the runner lacks) | ✅ success |
+
 ## 2026-10-20 10:17 UTC · upstream `5a0b63f` → `f4b7bc3`
 
 Pull request: https://github.com/Maxcimkj/slot-gb-custom/pull/3

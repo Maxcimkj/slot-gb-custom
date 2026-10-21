@@ -1,5 +1,5 @@
 use slot_gfx::{Canvas, OUT_H};
-use slot_store::GbPalette;
+use slot_store::GbColors;
 
 use crate::hud::{HUD_INK, PLATE_H};
 use crate::icon::{haloed, haloed_with, icon_coverage, Icon, HALO_PX, WARNING_INK};
@@ -24,14 +24,15 @@ pub enum Toast {
     ShaderSimpletex,
     CardUnwritable,
     CardRepair,
+    CardRepairCharge,
     CardRepaired,
     CardRepairFailed,
-    Palette(GbPalette),
+    Palette(GbColors),
     Duplicate(QuickRow),
 }
 
 impl Toast {
-    const FIXED: [Toast; 18] = [
+    const FIXED: [Toast; 19] = [
         Toast::StateSaved,
         Toast::StateLoaded,
         Toast::NeedsGpsp,
@@ -48,6 +49,7 @@ impl Toast {
         Toast::ShaderSimpletex,
         Toast::CardUnwritable,
         Toast::CardRepair,
+        Toast::CardRepairCharge,
         Toast::CardRepaired,
         Toast::CardRepairFailed,
     ];
@@ -55,7 +57,7 @@ impl Toast {
     pub fn all() -> Vec<Toast> {
         Self::FIXED
             .into_iter()
-            .chain(GbPalette::all().map(Toast::Palette))
+            .chain(GbColors::all().map(Toast::Palette))
             .chain(bound_rows().map(Toast::Duplicate))
             .collect()
     }
@@ -65,7 +67,7 @@ impl Toast {
             Toast::Palette(p) => Self::FIXED.len() + p.index(),
             Toast::Duplicate(row) => {
                 Self::FIXED.len()
-                    + GbPalette::all().count()
+                    + GbColors::all().count()
                     + bound_rows().position(|r| r == row).unwrap_or(0)
             }
             fixed => Self::FIXED.iter().position(|t| *t == fixed).unwrap_or(0),
@@ -80,7 +82,10 @@ impl Toast {
     }
 
     pub fn alarm(self) -> bool {
-        matches!(self, Toast::CardUnwritable | Toast::CardRepair)
+        matches!(
+            self,
+            Toast::CardUnwritable | Toast::CardRepair | Toast::CardRepairCharge
+        )
     }
 
     pub fn hold_ms(self) -> crate::hud::Millis {
@@ -95,6 +100,7 @@ impl Toast {
         match self {
             Toast::CardUnwritable => Some("Progress is not being saved"),
             Toast::CardRepair => Some("Press SELECT + START to repair"),
+            Toast::CardRepairCharge => Some("Charge the battery to repair"),
             _ => None,
         }
     }
@@ -126,7 +132,7 @@ impl Toast {
             Toast::ShaderDot => "Shader: Dot",
             Toast::ShaderSimpletex => "Shader: Simpletex",
             Toast::CardUnwritable => "Can't write to SD card",
-            Toast::CardRepair => "Can't write to SD card",
+            Toast::CardRepair | Toast::CardRepairCharge => "Can't write to SD card",
             Toast::CardRepaired => "SD card repaired",
             Toast::CardRepairFailed => "Card repair failed",
             Toast::Palette(p) => p.label(),
