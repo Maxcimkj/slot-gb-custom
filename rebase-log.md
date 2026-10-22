@@ -2,6 +2,71 @@
 
 One record per upstream sync, newest first. Written by `.github/workflows/sync-upstream.yml`; see `FORK-NOTES.md` for how the fork is kept.
 
+## 2026-10-22 10:22 UTC · upstream `842649e` → `91499a9`
+
+Pull request: https://github.com/Maxcimkj/slot-gb-custom/pull/5
+Run: https://github.com/Maxcimkj/slot-gb-custom/actions/runs/39761202570
+
+### Upstream changes (7 commits)
+
+- `91499a9` Let Fast Forward be set to Off (#123) (Brandon T. Kowalski)
+- `0d36d9d` Ask mGBA for the state size again once the game settles on its save chip, closes #126 (Brandon T. Kowalski)
+- `07183c8` Leave the audio device closed at boot so the BaseOS startup sound can play, closes #135 (Brandon T. Kowalski)
+- `af9d569` Mark the RG34XXSP left stick as verified (Brandon T. Kowalski)
+- `9e545a3` Keep the shelf drawn while a held letter jump outruns the scroll (Brandon T. Kowalski)
+- `412f694` Add Load State on Insert and rename Auto Save on Eject to Save State on Eject, closes #130 (Brandon T. Kowalski)
+- `1b2001e` Build mGBA with the upstream fix for MBC2 games crashing on their first save RAM read, closes #137 (Brandon T. Kowalski)
+
+### Fork changes kept on top (1 commits)
+
+- `0b46d92` Add new fit mode for gb, gbc and bezels
+
+### Conflicts
+
+None. Upstream merged cleanly into the fork.
+
+#### Agent notes
+
+##### Sync notes
+
+Merged upstream `91499a9` into the fork (`ffe6dc6`) on branch `sync/upstream-91499a9`.
+The merge was clean: no file contained conflict markers, so no fork change had to be
+re-applied against upstream's code. Every fork feature from `FORK-NOTES.md` section 3 is
+present in the result, and the full check set passes.
+
+##### crates/slot-ui/tests/letters.rs
+
+Upstream added `holding_a_letter_jump_never_empties_the_shelf` (commit `9e545a3`) with its
+`assert!(covered, ...)` on one long line. The fork does not touch this file. Running
+`cargo fmt --all` wrapped that assertion onto several lines, which is the only working-tree
+change; the test and what it asserts are unchanged.
+
+##### Checks
+
+- `cargo fmt --all` passed (it rewrapped `crates/slot-ui/tests/letters.rs`; nothing else).
+- `cargo clippy --workspace --all-targets -- -D warnings` passed.
+- `cargo clippy -p slot --no-default-features --features device -- -D warnings` passed.
+- `cargo build --profile device --target-dir target-device -p slot --no-default-features --features device` passed.
+- `python3 .github/sync/sync_upstream.py fork-tests` passed: the five `slot/tests/app.rs`
+  Fit tests, the two `slot/tests/fit_softening.rs` tests and the `slot-ui/tests/fit_bezel.rs`
+  test all ran and passed. The macOS-only `slot-gfx/tests/pipeline.rs`,
+  `slot-gfx/tests/fit_colour.rs` and `slot/tests/render_fit_bezel.rs` tests were skipped as
+  the runner has no headless GL.
+- `cargo test -p slot-gfx`, `cargo test -p slot-ui` and `cargo test -p slot --no-fail-fast`
+  passed: every test result line was `ok`, zero failures. Tests that need a real libretro
+  core fall back to the mock core on this machine, as before.
+
+### Checks
+
+| Check | Result |
+|---|---|
+| `cargo fmt --all -- --check` | ✅ success |
+| `cargo clippy --workspace --all-targets -- -D warnings` | ✅ success |
+| `cargo clippy -p slot --no-default-features --features device -- -D warnings` | ✅ success |
+| `cargo build --profile device -p slot --no-default-features --features device` | ✅ success |
+| `sync_upstream.py fork-tests`: the fork's Fit tests (FORK-NOTES.md section 4) | ✅ success |
+| `cargo test --workspace --no-fail-fast` (advisory: some tests need cores the runner lacks) | ✅ success |
+
 ## 2026-10-21 10:17 UTC · upstream `f4b7bc3` → `842649e`
 
 Pull request: https://github.com/Maxcimkj/slot-gb-custom/pull/4
