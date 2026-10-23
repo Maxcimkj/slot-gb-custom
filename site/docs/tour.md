@@ -41,7 +41,7 @@ Hold <kbd>R2</kbd> to fast-forward.<br>Double tap <kbd>R2</kbd> to lock FF on.<b
 
 ### Commit Aspect Ratio Crimes { #expand data-clip="gbc-stretch.mp4" }
 
-<kbd>L1</kbd> stretches GB and GBC games.<br><kbd>R1</kbd> puts them back to their original size.
+<kbd>L1</kbd> makes GB and GBC games bigger: first to the full screen height, then stretched across it.<br><kbd>R1</kbd> steps them back to their original size.
 
 ### Screen Shaders { #shaders data-clip="shaders.mp4" }
 

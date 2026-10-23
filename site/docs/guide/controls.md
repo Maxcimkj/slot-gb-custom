@@ -129,7 +129,7 @@ Hold <kbd>Y</kbd>
 :   Turbo <kbd>B</kbd>
 
 <kbd>L1</kbd> / <kbd>R1</kbd>
-:   Stretch to fill the screen / original size.<br>Game Boy and Game Boy Color only.
+:   Bigger: original size, full height, stretched / smaller again.<br>Game Boy and Game Boy Color only.
 
 </div>
 

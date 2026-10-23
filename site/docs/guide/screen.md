@@ -35,9 +35,9 @@ Palettes only apply to original Game Boy games.
 
 ## Stretching
 
-Just like the OG, <kbd>L1</kbd> stretches Game Boy and Game Boy Color games across the screen. <kbd>R1</kbd> puts them back. slot remembers your pick per game.
+Just like the OG, <kbd>L1</kbd> makes Game Boy and Game Boy Color games bigger: first to the full screen height, then stretched across the screen. <kbd>R1</kbd> steps them back. slot remembers your pick per game.
 
-Bezels are hidden while a game is stretched.
+Bezels are hidden only while a game is stretched across the screen.
 
 ## Bezels
 
