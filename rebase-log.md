@@ -2,6 +2,203 @@
 
 One record per upstream sync, newest first. Written by `.github/workflows/sync-upstream.yml`; see `FORK-NOTES.md` for how the fork is kept.
 
+## 2026-10-23 10:17 UTC · upstream `91499a9` → `20703ed`
+
+Pull request: https://github.com/Maxcimkj/slot-gb-custom/pull/6
+Run: https://github.com/Maxcimkj/slot-gb-custom/actions/runs/39936420802
+
+### Upstream changes (20 commits)
+
+- `20703ed` v1.9.0 CHANGELOG.md (Brandon T. Kowalski)
+- `77a1970` Install a boot logo from Config exactly as it is (Brandon T. Kowalski)
+- `76237f2` Add screenshots with a gallery, zoom and multi-select, closes #94 (Brandon T. Kowalski)
+- `22f1ec2` Let GBA take bezels from the card on 4:3 panels (Brandon T. Kowalski)
+- `a7ec171` Give the footer room above it (Brandon T. Kowalski)
+- `d969e33` Point the undo steps at the in-game menu (Brandon T. Kowalski)
+- `58f4b10` Proofread the docs, stub the Screenshots page and eject the cart from the home page (Brandon T. Kowalski)
+- `5775326` Add the slot footer, the Documentation cart and the human-edited Guide (Brandon T. Kowalski)
+- `64c4147` Offer Undo Save and Undo Load in the in-game menu (Brandon T. Kowalski)
+- `0dfb08c` Draw the About sticker's model in GAMECUBEN from BASEOS_MODEL (Brandon T. Kowalski)
+- `47bd0e6` Give each card repair step a time limit (Brandon T. Kowalski)
+- `79bc012` Let the shelf come up when label caching stops moving (Brandon T. Kowalski)
+- `aee305c` Add a site footer and polish the docs (Brandon T. Kowalski)
+- `25315de` Stop waiting on a core that does not answer (Brandon T. Kowalski)
+- `55cf31b` Start on the shelf when a cart took slot down while loading (Brandon T. Kowalski)
+- `f66497e` Write the in-game save every minute and the resume every five (Brandon T. Kowalski)
+- `1edb9ed` Sync the card after each save and each new log line (Brandon T. Kowalski)
+- `4e74bdd` Refuse an empty state instead of handing it to the core (Brandon T. Kowalski)
+- `7554adc` Rebuild the site on Zensical and add a Guide section (Brandon T. Kowalski)
+- `421f11f` Use the CHANGELOG section for the version as the release notes (Brandon T. Kowalski)
+
+### Fork changes kept on top (1 commits)
+
+- `0b46d92` Add new fit mode for gb, gbc and bezels
+
+### Conflicts
+
+- `site/index.html`: Upstream deleted this file, so the fork's edits to it were dropped (upstream wins).
+
+#### Agent notes
+
+##### Sync notes
+
+Merged upstream `20703ed` into the fork (`36e6424`) on branch `sync/upstream-20703ed`. The
+merge was clean: no file contained conflict markers, so every fork change in `FORK-NOTES.md`
+section 3 was kept by git without hand editing. The fork's Fit feature, bezel art, softening
+shader and Fit tests are all present, and the full check set passes. The only hand edits were
+three clippy lints in an upstream test and the re-application of the fork's L1/R1 wording to
+upstream's rebuilt site.
+
+##### crates/slot-ui/tests/shot_viewer.rs
+
+Upstream added this screenshot-gallery test in `76237f2`, and it was new to the merge. Clippy
+1.96 under `-D warnings` rejected three lints in it: a redundant guard, a manual
+`Range::contains`, and a `useless_vec`. The fork does not otherwise touch the file. I applied
+the three mechanical clippy fixes and changed no assertion.
+
+##### site/index.html
+
+Upstream `7554adc` rebuilt the site on Zensical and deleted `site/index.html`, so the fork's
+two L1/R1 wording changes there no longer apply to any file. Following `FORK-NOTES.md` rule 3 I
+kept upstream's deletion and moved the fork's wording to the new Markdown guide instead, as the
+table's "take upstream's markup, then re-apply the wording" asks.
+
+##### site/docs/tour.md
+
+Upstream's new guide describes L1 as stretching and R1 as restoring, which matches upstream's
+two-mode behaviour. The fork's Fit mode makes L1 step through Actual, then full height, then
+stretched. I re-applied the fork's wording to upstream's new line so the tour describes the
+three-step cycle.
+
+##### site/docs/guide/controls.md
+
+Upstream's new button reference lists L1/R1 as "Stretch to fill the screen / original size".
+The fork's change makes them a bigger/smaller pair over three modes. I replaced the description
+with the fork's "Bigger: original size, full height, stretched / smaller again" wording on
+upstream's row, leaving the surrounding markup alone.
+
+##### site/docs/guide/screen.md
+
+Upstream's new Screen guide says L1 stretches, R1 restores, and bezels are hidden while
+stretched. In the fork the full-height Fit step keeps its bezel and only Stretch hides it. I
+kept upstream's prose and adjusted it to the fork's behaviour, including that the bezel is
+hidden only when the game is stretched across the screen.
+
+##### Formatting pass
+
+`cargo fmt --all` was required and reformatted upstream's newest code, which this toolchain's
+rustfmt wraps differently. Every change below is pure line wrapping or argument layout with no
+semantic effect; the fork does not touch these files. They were reformatted so
+`cargo fmt --all -- --check` passes.
+
+##### crates/slot-store/tests/bindings.rs
+
+Upstream changed this screenshot-store test in the screenshots work; the fork does not touch it.
+`cargo fmt --all` only rewrapped its long lines, with nothing else changed.
+
+##### crates/slot-store/tests/shots.rs
+
+Upstream changed this screenshot-store test in the screenshots work; the fork does not touch it.
+`cargo fmt --all` only rewrapped its long lines, with nothing else changed.
+
+##### crates/slot-ui/src/plate.rs
+
+Upstream rewrote the plate module for the screenshots feature; the fork does not touch it.
+`cargo fmt --all` only reflowed one `blit` call's arguments, with nothing else changed.
+
+##### crates/slot-ui/src/shot_viewer.rs
+
+Upstream added this viewer module in `76237f2`; the fork does not touch it. `cargo fmt --all`
+only rewrapped several long calls and closures, with nothing else changed.
+
+##### crates/slot/src/shot_loader.rs
+
+Upstream changed this screenshot loader; the fork does not touch it. `cargo fmt --all` only
+rewrapped a long expression, with nothing else changed.
+
+##### crates/slot/src/shot_writer.rs
+
+Upstream changed this screenshot writer; the fork does not touch it. `cargo fmt --all` only
+rewrapped its long calls, with nothing else changed.
+
+##### crates/slot/tests/emu.rs
+
+Upstream changed this test file over the sync range; the fork does not touch it. `cargo fmt
+--all` only rewrapped one `assert!`, with nothing else changed.
+
+##### crates/slot/tests/flush.rs
+
+Upstream changed this test file over the sync range; the fork does not touch it. `cargo fmt
+--all` only rewrapped one `assert_eq!`, with nothing else changed.
+
+##### crates/slot/tests/in_game_menu.rs
+
+Upstream changed this test file over the sync range; the fork does not touch it. `cargo fmt
+--all` only rewrapped its long lines, with nothing else changed.
+
+##### crates/slot/tests/label_cache.rs
+
+Upstream changed this test file over the sync range; the fork does not touch it. `cargo fmt
+--all` only rewrapped a command builder chain and two assertions, with nothing else changed.
+
+##### crates/slot/tests/loading_mark.rs
+
+Upstream changed this test file over the sync range; the fork does not touch it. `cargo fmt
+--all` only reflowed a `persist::flush` call and an `assert!`, with nothing else changed.
+
+##### crates/slot/tests/quick_menu.rs
+
+Upstream changed this test file over the sync range; the fork does not touch it. `cargo fmt
+--all` only rewrapped its long lines, with nothing else changed.
+
+##### crates/slot/tests/render_gallery_stress.rs
+
+Upstream added this screenshot stress test; the fork does not touch it. `cargo fmt --all` only
+rewrapped its long calls and assertions, with nothing else changed.
+
+##### crates/slot/tests/render_screenshot.rs
+
+Upstream added this screenshot render test; the fork does not touch it. `cargo fmt --all` only
+rewrapped its helpers and assertions, with nothing else changed.
+
+##### crates/slot/tests/screenshot.rs
+
+Upstream added this screenshot test; the fork does not touch it. `cargo fmt --all` only
+rewrapped its long calls and assertions, with nothing else changed.
+
+##### crates/slot/tests/shot_loader.rs
+
+Upstream changed this loader test over the sync range; the fork does not touch it. `cargo fmt
+--all` only rewrapped its long lines, with nothing else changed.
+
+##### Checks
+
+- `cargo fmt --all` ran and `cargo fmt --all -- --check` passes.
+- `cargo clippy --workspace --all-targets -- -D warnings` passes after the three
+  `crates/slot-ui/tests/shot_viewer.rs` lint fixes.
+- `cargo clippy -p slot --no-default-features --features device -- -D warnings` passes.
+- `cargo build --profile device --target-dir target-device -p slot --no-default-features
+  --features device` passes.
+- `python3 .github/sync/sync_upstream.py fork-tests` passes: the five `slot/tests/app.rs` Fit
+  tests, the two `slot/tests/fit_softening.rs` tests and the `slot-ui/tests/fit_bezel.rs` test
+  ran and passed. The macOS-only `slot-gfx/tests/pipeline.rs`, `slot-gfx/tests/fit_colour.rs`
+  and `slot/tests/render_fit_bezel.rs` tests were skipped because this machine has no headless
+  GL.
+- `cargo test -p slot-ui`, `cargo test -p slot` and `cargo test -p slot-gfx` pass: every result
+  line is `ok`, zero failures. Tests that need a real libretro core fall back to the mock core
+  on this machine, as before.
+
+### Checks
+
+| Check | Result |
+|---|---|
+| `cargo fmt --all -- --check` | ✅ success |
+| `cargo clippy --workspace --all-targets -- -D warnings` | ✅ success |
+| `cargo clippy -p slot --no-default-features --features device -- -D warnings` | ✅ success |
+| `cargo build --profile device -p slot --no-default-features --features device` | ✅ success |
+| `sync_upstream.py fork-tests`: the fork's Fit tests (FORK-NOTES.md section 4) | ✅ success |
+| `cargo test --workspace --no-fail-fast` (advisory: some tests need cores the runner lacks) | ✅ success |
+
 ## 2026-10-22 10:22 UTC · upstream `842649e` → `91499a9`
 
 Pull request: https://github.com/Maxcimkj/slot-gb-custom/pull/5
