@@ -60,6 +60,12 @@ PROTECTED = (".github/", str(NOTES), str(LOG))
 MAX_LISTED = 100
 # Fork release tags are <upstream release>-gp-custom.<n>, e.g. v1.7.0-gp-custom.3.
 TAG_SUFFIX = "-gp-custom"
+# release.yml takes the release notes from the CHANGELOG.md section named after the tag. The fork
+# strips TAG_SUFFIX first, so a fork tag gets its upstream release's notes. The agent may not edit
+# .github/, so prepare re-applies this to upstream's release.yml itself (release_notes_for_fork).
+RELEASE = Path(".github/workflows/release.yml")
+UPSTREAM_LOOKUP = re.compile(r'^( *)awk -v head="## \[\$\{GITHUB_REF_NAME#v\}\]"', re.M)
+FORK_LOOKUP = f'awk -v head="## [${{version%%{TAG_SUFFIX}*}}]"'
 
 MARKER = re.compile(r"^(?:<{7}|\|{7}|={7}|>{7})(?: |\r?$)", re.M)
 
@@ -151,6 +157,8 @@ compile on this machine; still update them for any API change you make elsewhere
 
 Do not run `git add`, `git commit`, `git checkout`, `git merge` or `git reset`, and do not edit
 anything under `.github/`, `FORK-NOTES.md` or `rebase-log.md`; the workflow commits your work.
+The fork's change to `.github/workflows/release.yml` (release notes for `-gp-custom` tags) is
+re-applied by the workflow before you start, so leave that file as it is.
 
 Finally write `.sync-notes.md` in the repository root. For each file you changed, a `### <path>`
 heading followed by 2 to 5 plain sentences: what upstream changed, what the fork change does,
@@ -220,6 +228,29 @@ def auto_resolve(path):
     return None
 
 
+def release_notes_for_fork(conflicted):
+    """Keep release.yml finding the notes for fork tags. Returns the note for the record, or None."""
+    if not RELEASE.exists():
+        return None
+    if conflicted:
+        git("checkout", "--ours", "--", str(RELEASE))
+    text = RELEASE.read_text()
+    if FORK_LOOKUP in text:
+        return None
+    if "CHANGELOG.md" not in text:
+        note = "Upstream no longer takes the release notes from CHANGELOG.md; kept upstream's version."
+    elif UPSTREAM_LOOKUP.search(text):
+        text = UPSTREAM_LOOKUP.sub(lambda m: f'{m[1]}version="${{GITHUB_REF_NAME#v}}"\n{m[1]}{FORK_LOOKUP}', text, 1)
+        RELEASE.write_text(text)
+        note = f"Kept upstream's version and re-applied the fork's {TAG_SUFFIX} strip in the notes lookup."
+    else:
+        sys.exit(f"Upstream changed how {RELEASE} finds the CHANGELOG.md section, so the fork's "
+                 f"{TAG_SUFFIX} strip cannot be re-applied. Update it by hand on the sync branch, "
+                 f"and UPSTREAM_LOOKUP in this script.")
+    git("add", "--", str(RELEASE))
+    return note
+
+
 def sync_prs():
     prs = json.loads(gh("pr", "list", "--base", BASE, "--state", "open", "--json", "number,url,headRefName"))
     return [p for p in prs if p["headRefName"].startswith(BRANCH_PREFIX)]
@@ -264,7 +295,12 @@ def prepare():
     if merge.returncode and not unmerged:
         sys.exit(f"git merge failed:\n{merge.stdout}{merge.stderr}")
     auto, text = {}, []
+    note = release_notes_for_fork(str(RELEASE) in unmerged)
+    if note:
+        auto[str(RELEASE)] = note
     for path in unmerged:
+        if path == str(RELEASE):
+            continue
         note = auto_resolve(path)
         if note:
             auto[path] = note

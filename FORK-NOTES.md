@@ -193,9 +193,17 @@ assertions from this table.
 ## 5. Releases
 
 The sync workflow tags each merged upstream sync as the next `-gp-custom.<n>` release (section
-1, step 6); other releases are tagged by hand. See `RELEASE.md`. In short: `release.yml` (upstream's, unchanged) runs on any `v*` tag and
+1, step 6); other releases are tagged by hand. See `RELEASE.md`. In short: `release.yml` (upstream's) runs on any `v*` tag and
 attaches `slot-<tag>-h700.zip`, which holds a `slot-<tag>/` folder for SD2. One zip serves every
-H700 device. `.gitignore` ignores `/slot-v*/` and `/slot-v*-h700.zip` (two lines appended at the
+H700 device.
+
+`release.yml` has one fork change: it takes the release notes from the `CHANGELOG.md` section
+named after the tag, and the fork strips `-gp-custom.<n>` from the tag first, so
+`v1.9.0-gp-custom.1` gets upstream's `## [1.9.0]` notes. **Rule:** do not add fork sections to
+`CHANGELOG.md` for this. The agent may not edit `.github/`, so `sync_upstream.py prepare`
+re-applies the strip itself (`release_notes_for_fork`): on a conflict it takes upstream's file and
+rewrites the `awk -v head=...` lookup. If upstream changes that lookup so it no longer matches,
+the sync stops and asks for a hand fix on the sync branch. `.gitignore` ignores `/slot-v*/` and `/slot-v*-h700.zip` (two lines appended at the
 end; if `.gitignore` conflicts, keep upstream's file and re-append them).
 
 `pages.yml` is also upstream's. It deploys `site/` on pushes to `main` that touch it, and the repo
