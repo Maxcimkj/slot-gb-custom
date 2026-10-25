@@ -29,7 +29,9 @@ that produced it. Read this before resolving a conflict.
      (upstream wins, the fork change is re-applied on top) and runs fmt, clippy, the device build,
      the fork's Fit tests and other tests until they pass. It must keep the fork's tests intact
      (section 4). It may only run `cargo`, read-only `git` and the `fork-tests` command, has no
-     web access, and may not edit `.github/`, this file or `rebase-log.md`.
+     web access, and may not edit `.github/`, this file, `rebase-log.md` or `README.md`.
+     `README.md` is the fork's own: before the agent starts, `prepare` puts back the fork's
+     version whatever upstream did to it (`readme_for_fork`), so README conflicts never reach it.
   3. `verify` refuses the result if conflict markers remain or protected files changed. The
      workflow then runs the checks itself: fmt, clippy (host and device), the device build and the
      fork's Fit tests by name (section 4) are required; the full `cargo test` is advisory because
@@ -60,6 +62,8 @@ that produced it. Read this before resolving a conflict.
 | Path | What |
 |---|---|
 | `FORK-NOTES.md` | This file |
+| `README.md` | The fork's README. Upstream has a file with this name, but the sync always keeps the fork's version (section 1, step 2), so it never conflicts |
+| `.github/resources/fork/` | Fit screenshots used by `README.md` |
 | `RELEASE.md` | How release zips are built and named. Kept out of `README.md` on purpose so syncs never touch it |
 | `rebase-log.md` | One record per automatic upstream sync, newest first, written by the sync workflow |
 | `.github/workflows/sync-upstream.yml`, `.github/sync/sync_upstream.py` | The automatic upstream sync pull request, resolved by the OpenCode agent (section 1) |
@@ -69,8 +73,12 @@ that produced it. Read this before resolving a conflict.
 | `crates/slot/tests/fit_softening.rs` | GBC carts fit and soften exactly like GB carts, softened only while fitted |
 | `crates/slot-gfx/tests/fit_colour.rs` | Softening colour stripes: every channel even, edges only mix the two colours (macOS only) |
 
-**Rule:** do not edit `README.md` or `CHANGELOG.md` in the fork. Fork documentation goes in the
-files above. If upstream adds a file with one of these names, rename ours, not theirs.
+**Rule:** `README.md` belongs to the fork. Upstream's changes to it are never taken: the sync
+keeps the fork's version and records that in `rebase-log.md`. It keeps upstream's top part (banner,
+What is slot?, What does it look like?, Supported Devices) plus the fork's own section, and points
+to upstream's README for the full documentation. If upstream's top part changes in a way that
+matters (a new device, new screenshots), copy it over by hand. Do not edit `CHANGELOG.md` in the
+fork. If upstream adds a file with one of the other names above, rename ours, not theirs.
 
 ## 3. Fork changes to upstream files (conflict hotspots)
 

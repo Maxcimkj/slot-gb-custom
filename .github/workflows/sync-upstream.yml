@@ -103,7 +103,7 @@ jobs:
               "provider": { "openrouter": { "options": { "apiKey": "{env:OPENROUTER_API_KEY}" } } },
               "agent": { "build": { "steps": 150 } },
               "permission": {
-                "edit": { "*": "allow", ".github/*": "deny", "FORK-NOTES.md": "deny", "rebase-log.md": "deny" },
+                "edit": { "*": "allow", ".github/*": "deny", "FORK-NOTES.md": "deny", "rebase-log.md": "deny", "README.md": "deny" },
                 "bash": {
                   "*": "deny",
                   "cargo *": "allow",

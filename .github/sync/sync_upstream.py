@@ -55,8 +55,10 @@ PROMPT = TEMP / "sync-prompt.md"
 LOG = Path("rebase-log.md")
 NOTES = Path("FORK-NOTES.md")
 AGENT_NOTES = Path(".sync-notes.md")
+# The fork's own README: prepare always keeps the fork's version (readme_for_fork).
+README = Path("README.md")
 # The agent may not change these, unless one of them is itself a conflicted file.
-PROTECTED = (".github/", str(NOTES), str(LOG))
+PROTECTED = (".github/", str(NOTES), str(LOG), str(README))
 MAX_LISTED = 100
 # Fork release tags are <upstream release>-gp-custom.<n>, e.g. v1.7.0-gp-custom.3.
 TAG_SUFFIX = "-gp-custom"
@@ -156,7 +158,8 @@ If a fork test fails, fix the code, not the test. Tests marked macOS-only in FOR
 compile on this machine; still update them for any API change you make elsewhere.
 
 Do not run `git add`, `git commit`, `git checkout`, `git merge` or `git reset`, and do not edit
-anything under `.github/`, `FORK-NOTES.md` or `rebase-log.md`; the workflow commits your work.
+anything under `.github/`, `FORK-NOTES.md`, `rebase-log.md` or `README.md`; the workflow commits
+your work. `README.md` is the fork's own and the workflow keeps the fork's version of it.
 The fork's change to `.github/workflows/release.yml` (release notes for `-gp-custom` tags) is
 re-applied by the workflow before you start, so leave that file as it is.
 
@@ -251,6 +254,18 @@ def release_notes_for_fork(conflicted):
     return note
 
 
+def readme_for_fork(fork_main):
+    """Keep the fork's README.md whatever upstream did to it. Returns the note for the record, or None."""
+    fork = blob(f"{fork_main}:{README}")
+    if not fork:
+        return None
+    if README.exists() and README.read_bytes() == fork and not git("ls-files", "-u", "--", str(README)):
+        return None
+    git("checkout", fork_main, "--", str(README))
+    git("add", "--", str(README))
+    return "The fork keeps its own README; upstream's changes to it were not taken."
+
+
 def sync_prs():
     prs = json.loads(gh("pr", "list", "--base", BASE, "--state", "open", "--json", "number,url,headRefName"))
     return [p for p in prs if p["headRefName"].startswith(BRANCH_PREFIX)]
@@ -298,8 +313,11 @@ def prepare():
     note = release_notes_for_fork(str(RELEASE) in unmerged)
     if note:
         auto[str(RELEASE)] = note
+    note = readme_for_fork(fork_main)
+    if note:
+        auto[str(README)] = note
     for path in unmerged:
-        if path == str(RELEASE):
+        if path in (str(RELEASE), str(README)):
             continue
         note = auto_resolve(path)
         if note:
