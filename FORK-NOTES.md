@@ -30,7 +30,7 @@ that produced it. Read this before resolving a conflict.
 - **Sync model:** upstream `main` is merged into the fork's `main` through a pull request, the
   way GitHub's Sync fork → Open pull request does it; history is never rewritten. A coding agent
   resolves the pull request, and the workflow merges it once every required check passes.
-  `.github/workflows/sync-upstream.yml` does this daily (05:17 UTC) and on demand:
+  `.github/workflows/sync-upstream.yml` does this weekly (Mondays 05:17 UTC) and on demand:
   1. `.github/sync/sync_upstream.py prepare` copies upstream's `main` to `sync/upstream-<sha>` in
      the fork and opens a pull request from it into `main`; GitHub shows it as conflicted when the
      fork's changes clash. A newer upstream closes an older waiting sync pull request; the same
