@@ -24,8 +24,7 @@ pub struct GamePass {
     origin: [f32; 2],
     u_pic: gl::types::GLint,
     pic: [f32; 4],
-    u_soft: gl::types::GLint,
-    soft: bool,
+    pub(crate) soft: crate::fit::Soft,
     paper: gl::types::GLuint,
     paper_size: f32,
     effect: ScreenEffect,
@@ -38,7 +37,7 @@ pub struct GamePass {
 
 impl GamePass {
     pub fn new() -> Result<Self, GfxError> {
-        let prog = crate::shaders::program(RECT_VERT, GAME_FRAG)?;
+        let prog = crate::shaders::program(RECT_VERT, &crate::fit::game_frag(GAME_FRAG))?;
         let game = crate::gl::texture(SRC_W, SRC_H, gl::NEAREST, gl::CLAMP_TO_EDGE, gl::BGRA, None);
         let paper = crate::gl::texture(
             1,
@@ -48,7 +47,7 @@ impl GamePass {
             crate::gl::gray_format(),
             Some(&[255]),
         );
-        let (u_rect, u_bright, u_uv, u_mode, u_paper_size, u_pic, u_fbo, u_origin, u_soft);
+        let (u_rect, u_bright, u_uv, u_mode, u_paper_size, u_pic, u_fbo, u_origin);
         unsafe {
             gl::UseProgram(prog);
             gl::Uniform1i(crate::gl::uniform_location(prog, "u_game"), 0);
@@ -71,7 +70,6 @@ impl GamePass {
             u_fbo = crate::gl::uniform_location(prog, "u_fbo");
             u_pic = crate::gl::uniform_location(prog, "u_pic");
             u_origin = crate::gl::uniform_location(prog, "u_origin");
-            u_soft = crate::gl::uniform_location(prog, "u_soft");
         }
         Ok(GamePass {
             prog,
@@ -87,8 +85,7 @@ impl GamePass {
             origin: [0.0, 0.0],
             u_pic,
             pic: WHOLE_TEXTURE,
-            u_soft,
-            soft: false,
+            soft: crate::fit::Soft::new(prog),
             paper,
             paper_size: 1.0,
             effect: ScreenEffect::Lcd3x,
@@ -153,10 +150,6 @@ impl GamePass {
         self.paper_size = size as f32;
     }
 
-    pub fn set_soft(&mut self, on: bool) {
-        self.soft = on;
-    }
-
     pub fn set_source_rect(&mut self, rect: [f32; 4]) {
         self.src = rect;
     }
@@ -213,7 +206,7 @@ impl GamePass {
             gl::Uniform4f(self.u_uv, src[0], src[1], src[2], src[3]);
             gl::Uniform1f(self.u_bright, bright);
             gl::Uniform1f(self.u_mode, self.effect.mode());
-            gl::Uniform1f(self.u_soft, if self.soft { 1.0 } else { 0.0 });
+            self.soft.upload(tex == self.game);
             gl::Uniform1f(self.u_paper_size, self.paper_size);
             gl::Uniform2f(self.u_fbo, self.fbo_scale[0], self.fbo_scale[1]);
             gl::Uniform2f(self.u_origin, self.origin[0], self.origin[1]);
