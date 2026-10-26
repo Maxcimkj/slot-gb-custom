@@ -25,9 +25,8 @@ that produced it. Read this before resolving a conflict.
   | `4df38b7` | First upstream merge, by hand, plus the automatic sync workflow and two more Fit test files |
   | `c59df76` (PR #7) | `release.yml` takes the notes for `-gp-custom` tags from the upstream version's section (section 5) |
   | `8575439` | `README.md` becomes the fork's own, with Fit screenshots; the sync always keeps it |
-  | `6eedf3d` | Fit bezels get the Actual bezels' grey surround, black frame and inner shadow; `tools/fit_bezel/` builds them |
-  | `14e761e` | Grid screen effect at two cells per game pixel in Fit |
-  | the commit that adds this row | All fork code moved into `fit*.rs` files; upstream files keep only hooks and upstream's own formatting (section 3) |
+  | `35cbb3f` (PR #8) | Fit bezels in the Actual bezels' style (`tools/fit_bezel/` builds them); all fork code moved into `fit*.rs` files, upstream files keep only hooks and upstream's own formatting (section 3); screenshots never softened |
+  | the commit that adds this row | The Grid effect in Fit is upstream's again, one line per game pixel as in Stretch; PR #8 had given it two cells per game pixel, which hid the pixels. The softening is an `if` on a uniform, so the other modes skip it. Fit counts only with a seated cart of the core's platform, Stretch keeps the cached bezel, and the crop uses the same check as everything else |
 - **Sync model:** upstream `main` is merged into the fork's `main` through a pull request, the
   way GitHub's Sync fork → Open pull request does it; history is never rewritten. A coding agent
   resolves the pull request, and the workflow merges it once every required check passes.
@@ -83,14 +82,14 @@ that produced it. Read this before resolving a conflict.
 | `.github/workflows/sync-upstream.yml`, `.github/sync/sync_upstream.py` | The automatic upstream sync pull request, resolved by the OpenCode agent (section 1) |
 | `assets/bezel_gb_fit.png`, `assets/bezel_gbc_fit.png` | Built-in Fit bezel art, compiled in |
 | `tools/fit_bezel/` | `make_fit_bezels.py` rebuilds the Fit bezel art from the Actual bezels; `label_gb(c).png` are the right-bar labels it places |
-| `crates/slot/src/fit.rs` | The Fit mode: `bigger()`/`smaller()` stepping, the Fit crop, which pictures are fitted and softened, and the bezel over a fitted picture |
+| `crates/slot/src/fit.rs` | The Fit mode: `bigger()`/`smaller()` stepping, the Fit crop, which pictures are fitted and softened (`fits_picture`, `softens_picture`), the bezel cache key, and the bezel over a fitted picture |
 | `crates/slot-ui/src/fit_bezel.rs` | `fit_game_bezel_face`: the built-in Fit bezel art |
-| `crates/slot-gfx/src/fit.rs` | The shader side: `game_frag` patches upstream's `GAME_FRAG` with the softening and the half-cell grid, and `Soft` holds the `u_soft` uniform. Its unit test checks the patch still applies |
+| `crates/slot-gfx/src/fit.rs` | The shader side: `game_frag` patches upstream's `GAME_FRAG` with the softening, and `Soft` holds the `u_soft` uniform. Its unit tests check the patch still applies and that a shader it does not fit is left as upstream wrote it |
 | `crates/slot/tests/fit_app.rs` | The Fit mode as the app sees it, including the fork's versions of upstream's two L1/R1 tests |
 | `crates/slot/tests/fit_softening.rs` | GBC carts fit and soften exactly like GB carts, softened only while fitted |
 | `crates/slot/tests/fit_render_bezel.rs` | Full-frame render of the Fit bezel and of a card bezel in Fit (macOS only) |
 | `crates/slot-ui/tests/fit_bezel.rs` | Fit bezel PNGs fill the side bars and only shade the picture's edges |
-| `crates/slot-gfx/tests/fit_pipeline.rs` | The fitted picture through the real shader: full height, even rows, half-cell grid (macOS only) |
+| `crates/slot-gfx/tests/fit_pipeline.rs` | The fitted picture through the real shader: full height, even rows, upstream's grid, screenshots unsoftened (macOS only) |
 | `crates/slot-gfx/tests/fit_colour.rs` | Softening colour stripes: every channel even, edges only mix the two colours (macOS only) |
 
 **Rule: every fork Rust file is named `fit*.rs`** (`crates/*/src/fit*.rs`, `crates/*/tests/fit*.rs`).
@@ -118,10 +117,11 @@ hidden). The fork adds **Fit** between them: full 480 px height at the Game Boy'
 about 533x480, with black bars of ~93 px left and right. L1 steps bigger (Actual → Fit → Stretch,
 stops at Stretch), R1 steps smaller (Stretch → Fit → Actual, stops at Actual). The mode is saved
 per game in `Config/video_mode.txt` as `<rom stem> = fit`. Fit is the only softened mode, using
-sharp bilinear, because 3.33x nearest-neighbour makes rows alternate between 3 and 4 lines. With
-the Grid screen effect, Fit draws two grid cells per game pixel (about 1.67 px), because one cell
-per game pixel at 3.33x gives uneven lines; Actual and Stretch keep upstream's grid. GBA has
-no Fit and is never affected, even with `fit` saved for a GBA game.
+sharp bilinear, because 3.33x nearest-neighbour makes rows alternate between 3 and 4 lines. Screen
+effects, Grid included, are upstream's in Fit too: Grid draws a line on every game pixel's edge, as
+in Stretch, whose rows are also 3.33x. (Two cells per game pixel were tried: the lines came out
+even, but half of them ran through the pixels and the pixels could no longer be told apart.) GBA
+has no Fit and is never affected, even with `fit` saved for a GBA game.
 
 ### The hooks in upstream files
 
@@ -132,8 +132,8 @@ upstream's version and re-add its hooks; if one no longer fits, change the `fit*
 |---|---|---|
 | `crates/slot/src/lib.rs` | `pub mod fit;` | — |
 | `crates/slot/src/video_mode.rs` | `Fit` variant between `Actual` and `Stretch`; `"fit"` arms in `as_str` and `parse`; first lines of `source_rect`: `if let Some(rect) = crate::fit::source_rect(platform, mode) { return rect; }` | `fit::source_rect` returns `None` for every other mode and for GBA, so upstream's own code handles those |
-| `crates/slot/src/app.rs` | `fits_picture()` next to `source_rect()` (it reads the private `platform` and `video_mode`); L1 → `set_picture(self.video_mode.bigger())`, R1 → `set_picture(self.video_mode.smaller())` | `fit::fits`; `bigger`/`smaller` are an `impl VideoMode` in `fit.rs`, `softens_picture` an `impl App` there |
-| `crates/slot/src/frontend.rs` | `BezelSync.image` key gains `bool`; `let shown = (platform, pick, (w, h), app.fits_picture());`; before upstream's bezel `match`: `let fitted = crate::fit::game_bezel(app, platform, &shown.1, w, h);`, and the match's first arm `_ if fitted.is_some() => fitted.flatten(),`, so a fitted picture never loads the card bezel it hides; in `compose()`, after `set_game_source_rect`: `compositor.set_soft_picture(self.session.app().softens_picture());` | `fit::game_bezel` |
+| `crates/slot/src/app.rs` | `picture_mode()` next to `source_rect()`: a getter for the private `platform` and `video_mode`, which the core was opened with; L1 → `set_picture(self.video_mode.bigger())`, R1 → `set_picture(self.video_mode.smaller())` | `bigger`/`smaller` are an `impl VideoMode` in `fit.rs`; `fits_picture` and `softens_picture` an `impl App` there, built on `picture_mode()` and the seated cart, so nothing counts as fitted without a cart of that platform in the slot |
+| `crates/slot/src/frontend.rs` | `BezelSync.image` key gains `bool` (fitted); `let shown = crate::fit::bezel_key(app, (platform, pick, (w, h)), state.image.as_ref());`; the bezel `match`'s first arm `_ if shown.3 => crate::fit::game_bezel(platform, &shown.1, w, h),`, so a fitted picture never loads the card bezel it hides; in `compose()`, after `set_game_source_rect`: `compositor.set_soft_picture(self.session.app().softens_picture());` | `fit::bezel_key` keeps the cached bezel while stretched (Stretch shows none), so Fit → Stretch → Fit loads nothing; `fit::game_bezel` |
 | `crates/slot-ui/src/lib.rs` | `mod fit_bezel;` and `pub use fit_bezel::fit_game_bezel_face;` | — |
 | `crates/slot-gfx/src/lib.rs` | `mod fit;` | — |
 | `crates/slot-gfx/src/pipeline.rs` | `GamePass` field `pub(crate) soft: crate::fit::Soft`, set to `crate::fit::Soft::new(prog)`; the program is built from `&crate::fit::game_frag(GAME_FRAG)`; `self.soft.upload(tex == self.game);` after the `u_mode` uniform in `draw_source`: only the live game is softened, never a still (a screenshot) | `fit::game_frag`, `fit::Soft` |
@@ -142,12 +142,15 @@ upstream's version and re-add its hooks; if one no longer fits, change the `fit*
 | `site/docs/tour.md`, `site/docs/guide/controls.md`, `site/docs/guide/screen.md` | One line each describing L1/R1: L1 goes to full height first, then stretched; R1 steps back; bezels are hidden only while stretched | Take upstream's markup, re-apply the wording |
 
 `crates/slot-gfx/src/shaders.rs` has no fork change: `fit::game_frag` patches upstream's shader
-text when the program is built, at three anchors (`PATCHES`): after `varying vec2 v_uv;` it adds
-`u_soft` and `soft_texel`, the first sample becomes
-`u_soft > 0.5 ? soft_texel(uv) : texture2D(u_game, uv).rgb`, and the Grid branch's `hp`/`edge`
-lines get `cells` (2 while softened, else 1). If an anchor is missing or not unique, slot logs it
+text when the program is built, at two anchors (`PATCHES`): after `varying vec2 v_uv;` it adds
+`u_soft` and `soft_texel`, and the first sample becomes
+`vec3 c; if (u_soft > 0.5) { c = soft_texel(uv); } else { c = texture2D(u_game, uv).rgb; }`.
+It is an `if`, not a `? :`: the flag is the same for every pixel of a frame, so Actual, Stretch,
+GBA and screenshots take only upstream's single fetch, while a driver may flatten a ternary and
+run `soft_texel`'s four fetches in every mode. Upstream's screen effects, Grid included, run on
+that sample unchanged. If an anchor is missing or not unique, slot logs it
 and runs upstream's shader unpatched: every mode works as upstream's, and Fit only loses its
-softening and finer grid. `fit::tests::the_fit_patches_apply_to_upstreams_game_shader` then fails
+softening. `fit::tests::the_fit_patches_apply_to_upstreams_game_shader` then fails
 on any machine, so the sync catches it.
 
 ### Other fork changes to upstream files
@@ -226,6 +229,7 @@ rendering. File paths are under `crates/`.
 | Feature | Tests |
 |---|---|
 | The fork's shader patch still applies to upstream's `GAME_FRAG` (any machine) | `slot-gfx/src/fit.rs` `fit::tests::the_fit_patches_apply_to_upstreams_game_shader` |
+| The softening is an `if` on `u_soft`, never a `? :`, so other modes skip its fetches (any machine) | `slot-gfx/src/fit.rs` `fit::tests::the_other_modes_skip_the_softening_with_a_branch` |
 | A shader the patch does not fit is used exactly as upstream wrote it, never a crash (any machine) | `slot-gfx/src/fit.rs` `fit::tests::a_shader_the_patches_do_not_fit_is_left_as_upstream_wrote_it` |
 | Screenshots are drawn as upstream draws them, even after a fitted game (macOS) | `slot-gfx/tests/fit_pipeline.rs` `a_screenshot_is_never_softened_even_after_a_fitted_game` |
 | A fitted picture never reads the card bezel it hides from the card (macOS) | `slot/tests/fit_render_bezel.rs` `a_fitted_picture_never_reads_the_card_bezel_it_hides` |
@@ -236,10 +240,13 @@ rendering. File paths are under `crates/`.
 | Only Fit is softened (GB) | `slot/tests/fit_app.rs` `only_the_fitted_picture_is_softened` |
 | GBC fits and softens exactly like GB, softened only while fitted | `slot/tests/fit_softening.rs` `a_game_boy_color_cart_is_softened_only_while_fitted`, `game_boy_and_game_boy_color_carts_fit_and_soften_alike` |
 | Bezel kept in Fit, dropped in Stretch | `slot/tests/fit_app.rs` `the_fitted_picture_keeps_its_bezel_and_the_stretched_one_drops_it` |
+| Nothing counts as fitted or softened once the cart is out | `slot/tests/fit_app.rs` `nothing_counts_as_fitted_once_the_cart_is_out` |
+| The Fit crop and the fitted check agree for every platform and mode (any machine) | `slot/src/fit.rs` `fit::tests::the_crop_and_the_fitted_check_agree` |
+| Fit → Stretch → Fit never reads the hidden card bezel (macOS) | `slot/tests/fit_render_bezel.rs` `stepping_through_stretch_never_reads_the_hidden_card_bezel` |
 | Fit bezel art (GB and GBC) fills the side bars and only shades the picture's edges, with the Actual frame's shadow | `slot-ui/tests/fit_bezel.rs` `the_fit_bezels_fill_the_side_bars_and_only_shade_the_picture_edges` |
 | The fitted picture fills the height, black bars only at the sides (macOS) | `slot-gfx/tests/fit_pipeline.rs` `the_fitted_picture_fills_the_height_with_bars_only_at_the_sides` |
 | Sharp-bilinear softening gives every row the same weight (macOS) | `slot-gfx/tests/fit_pipeline.rs` `softening_gives_every_fitted_game_boy_row_the_same_weight` |
-| Grid in Fit: a line every half game pixel, evenly; unsoftened (Actual, Stretch) keeps one per game pixel (macOS) | `slot-gfx/tests/fit_pipeline.rs` `the_fitted_grid_lines_every_half_game_pixel_evenly` |
+| Grid in Fit is upstream's: identical with and without softening (within 1 per channel), one line per game pixel and none inside them (macOS) | `slot-gfx/tests/fit_pipeline.rs` `the_fitted_grid_lines_every_game_pixel_as_in_the_other_modes` |
 | Softening on colour stripes: every channel even, edges only mix the two colours (macOS) | `slot-gfx/tests/fit_colour.rs` `softened_colour_rows_stay_even_in_every_channel_without_fringes`, `softened_colour_columns_stay_even_in_every_channel_without_fringes` |
 | Default bezel in Fit drawn on screen, power lamp and label (macOS, GBC) | `slot/tests/fit_render_bezel.rs` `the_default_bezel_in_fit_mode_lights_the_power_lamp_and_labels_the_right_bar` |
 | A card bezel shows at Actual size and stays off the fitted picture (macOS) | `slot/tests/fit_render_bezel.rs` `a_bezel_from_the_card_shows_at_actual_size_and_stays_off_the_fitted_picture` |

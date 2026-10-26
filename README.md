@@ -78,10 +78,10 @@ slot shows GB and GBC games in two modes: **Actual** (exact 3x, with the bezel) 
 - The side bars get a Fit version of the built-in Game Boy and Game Boy Color bezels.
 - Fit is softened with a sharp-bilinear filter. At 3.33x, plain nearest-neighbour scaling makes
   rows alternate between 3 and 4 pixels tall, which shows as shimmer when the game scrolls.
-- With the Grid screen effect, Fit draws a finer grid, two cells per game pixel, so the lines
-  come out even.
-- Everything else is slot as it is: Actual, Stretch, GBA games (which have no Fit), screenshots
-  in the album and every other screen effect look and behave exactly as in slot.
+- Every screen effect works in Fit as in slot's other modes. The Grid effect draws a line on every
+  game pixel's edge, just as in Stretch, so the pixels stay visible.
+- Everything else is slot as it is: Actual, Stretch, GBA games (which have no Fit) and screenshots
+  in the album look and behave exactly as in slot.
 
 ### Fit with bezels
 
@@ -109,16 +109,6 @@ picture: every row ends up the same height.
 
 <p align="center">
 <img src=".github/resources/fork/fit-softening-zoom.png" width="60%" alt="Close-up of the same comparison: uneven rows on the left, even rows on the right">
-</p>
-
-### Fit with the Grid effect
-
-slot's Grid effect draws a line around every game pixel. At Fit's 3.33x those lines land
-unevenly: some are one dark pixel, others are smeared over two lighter ones. Fit gives the grid
-two cells per game pixel instead, a fine mesh with even lines. Actual and Stretch keep slot's grid.
-
-<p align="center">
-<img src=".github/resources/fork/fit-grid-zoom.png" width="60%" alt="Close-up of the Grid effect in Fit. Left: one cell per game pixel, with uneven lines. Right: two cells per game pixel, an even mesh">
 </p>
 
 ### Screen sizes

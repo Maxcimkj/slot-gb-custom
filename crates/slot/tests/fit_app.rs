@@ -10,7 +10,7 @@ use slot::app::Phase;
 use slot::session::Session;
 use slot::video_mode::{video_mode_for, VideoMode, VIDEO_MODE_FILE};
 use slot_gfx::WHOLE_TEXTURE;
-use slot_input::{Btn, RawEvent};
+use slot_input::{Action, Btn, RawEvent};
 use slot_retro::ButtonMask;
 use slot_ui::TexId;
 
@@ -175,4 +175,24 @@ fn a_gba_cart_saved_as_fit_still_shows_the_whole_picture() {
     let s = session_playing(d.path());
     assert_eq!(s.app().source_rect(), WHOLE_TEXTURE);
     assert!(!s.app().softens_picture(), "a GBA picture was softened");
+}
+
+#[test]
+fn nothing_counts_as_fitted_once_the_cart_is_out() {
+    let d = common::tmp_root_with_gb_carts(&["Tetris", "Zzz"]);
+    let mut s = session_playing(d.path());
+    s.feed([RawEvent::Down(Btn::L1)], 100);
+    s.feed([RawEvent::Up(Btn::L1)], 120);
+    assert!(s.app().fits_picture(), "L did not fit the picture");
+    s.app_mut().apply(Action::Eject);
+    let deadline = Instant::now() + Duration::from_secs(10);
+    while !matches!(s.app().phase(), Phase::Shelf) {
+        assert!(Instant::now() < deadline, "the cart never came out");
+        s.update(1.0 / 60.0);
+        std::thread::sleep(Duration::from_millis(1));
+    }
+    assert!(
+        !s.app().fits_picture() && !s.app().softens_picture(),
+        "the shelf still counts the last game as fitted"
+    );
 }

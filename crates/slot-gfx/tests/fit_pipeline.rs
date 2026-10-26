@@ -189,20 +189,36 @@ fn fitted_grid_profiles(frame: &[u8]) -> (Vec<f32>, Vec<f32>) {
 }
 
 #[test]
-fn the_fitted_grid_lines_every_half_game_pixel_evenly() {
+fn the_fitted_grid_lines_every_game_pixel_as_in_the_other_modes() {
     let Some((_g, _s, mut c)) = compositor() else {
         return;
     };
-    let (down, across) = fitted_grid_profiles(&fitted_grid(&mut c, true));
-    assert_even(&down, 2 * GB_H, 0.2, "fitted rows");
-    assert_even(&across, 2 * 156, 0.2, "fitted columns");
-
-    // Without softening (any other picture mode) the cell stays one game pixel: every other
-    // half-pixel cell has no line of its own, so they run from dark to fully lit.
-    let (down, _) = fitted_grid_profiles(&fitted_grid(&mut c, false));
+    // Softening leaves a flat picture as it is, so any difference would be the grid itself. Only
+    // the picture's outer columns, x 93 and 626, blend into the bars. A GPU may round the softened
+    // sample a step differently, so 1 per channel is allowed.
+    let soft = fitted_grid(&mut c, true);
+    let hard = fitted_grid(&mut c, false);
+    let differs = (0..OUT_H as usize)
+        .flat_map(|y| (94..626).map(move |x| (x, y)))
+        .filter(|&(x, y)| {
+            let (a, b) = (px(&soft, x, y), px(&hard, x, y));
+            (0..3).any(|ch| a[ch].abs_diff(b[ch]) > 1)
+        })
+        .count();
+    assert_eq!(
+        differs, 0,
+        "the fitted picture's grid differs from upstream's grid"
+    );
+    // Every game pixel has a line: averaged per game pixel, the cells darken alike. This does not
+    // see a line's shape; at 3.33x some are one dark pixel and others two lighter ones, as in
+    // Stretch's rows.
+    let (down, across) = fitted_grid_profiles(&soft);
+    assert_even(&down, GB_H, 0.15, "fitted rows");
+    assert_even(&across, 156, 0.15, "fitted columns");
+    // Only one line per game pixel, on its edge: half the half-pixel cells have none.
     assert!(
         spread(&cell_means(&down, 2 * GB_H)) > 0.3,
-        "the unsoftened grid is already split into half pixels"
+        "the fitted grid has lines inside the game pixels"
     );
 }
 
