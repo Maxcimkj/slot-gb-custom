@@ -8,8 +8,6 @@ use crate::art;
 const DEFAULT_PNG: &[u8] = include_bytes!("../../../assets/background_default.png");
 const BEZEL_GB_PNG: &[u8] = include_bytes!("../../../assets/bezel_gb.png");
 const BEZEL_GBC_PNG: &[u8] = include_bytes!("../../../assets/bezel_gbc.png");
-const BEZEL_GB_FIT_PNG: &[u8] = include_bytes!("../../../assets/bezel_gb_fit.png");
-const BEZEL_GBC_FIT_PNG: &[u8] = include_bytes!("../../../assets/bezel_gbc_fit.png");
 const BLUR_PNG: &[u8] = include_bytes!("../../../assets/background_default_blur.png");
 
 const SCRIM: f32 = 0.62;
@@ -67,16 +65,6 @@ fn panel_bezel(
         out[(top + game_h + d) * row..][..row].copy_from_slice(&inner[from..from + row]);
     }
     Some(out)
-}
-
-/// The built-in bezel for the full-height picture: art in the side bars only.
-pub fn fit_game_bezel_face(colour: bool, w: u32, h: u32) -> Option<Vec<u8>> {
-    let png = if colour {
-        BEZEL_GBC_FIT_PNG
-    } else {
-        BEZEL_GB_FIT_PNG
-    };
-    art::cover_bytes(png, w, h)
 }
 
 /// The carousel ground, scaled to cover the whole screen, including behind the footer.

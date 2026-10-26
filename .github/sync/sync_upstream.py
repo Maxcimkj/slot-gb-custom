@@ -71,21 +71,30 @@ FORK_LOOKUP = f'awk -v head="## [${{version%%{TAG_SUFFIX}*}}]"'
 
 MARKER = re.compile(r"^(?:<{7}|\|{7}|={7}|>{7})(?: |\r?$)", re.M)
 
+# The fork's own Rust files. All fork code lives in them; upstream files only call in. The fork
+# formats and lints only these, so upstream's code is never rewritten and never conflicts for it.
+FORK_RUST = (":(glob)crates/*/src/fit*.rs", ":(glob)crates/*/tests/fit*.rs")
+EDITION = "2021"
+
 # Checks the workflow runs after the agent, in order: (output name, label, required).
 CHECKS = [
-    ("fmt", "`cargo fmt --all -- --check`", True),
-    ("clippy", "`cargo clippy --workspace --all-targets -- -D warnings`", True),
-    ("clippy_device", "`cargo clippy -p slot --no-default-features --features device -- -D warnings`", True),
+    ("fmt", "`sync_upstream.py fork-fmt --check`: rustfmt on the fork's own files", True),
+    ("clippy", "`sync_upstream.py fork-clippy`: builds everything, lints the fork's own files", True),
+    ("clippy_device", "`sync_upstream.py fork-clippy device`: the same for the device build", True),
     ("device", "`cargo build --profile device -p slot --no-default-features --features device`", True),
     ("fork_tests", "`sync_upstream.py fork-tests`: the fork's Fit tests (FORK-NOTES.md section 4)", True),
-    ("tests", "`cargo test --workspace --no-fail-fast` (advisory: some tests need cores the runner lacks)", False),
+    ("tests", "`cargo test --workspace --no-fail-fast --lib --bins --tests` (advisory: some tests need cores the runner lacks)", False),
 ]
 
-# The fork's Fit tests: (package, test target, needs macOS, test names). A sync must keep every one
-# of them and keep it passing, so a merge cannot drop or disable one unnoticed. Kept here, under
-# .github/, because the agent may not edit it. FORK-NOTES.md section 4 lists what each one checks.
+# The fork's Fit tests: (package, test target or "lib", needs macOS, test names). A sync must keep
+# every one of them and keep it passing, so a merge cannot drop or disable one unnoticed. Kept here,
+# under .github/, because the agent may not edit it. FORK-NOTES.md section 4 lists what each checks.
 FORK_TESTS = [
-    ("slot", "app", False, [
+    ("slot-gfx", "lib", False, [
+        "fit::tests::the_fit_patches_apply_to_upstreams_game_shader",
+        "fit::tests::a_shader_the_patches_do_not_fit_is_left_as_upstream_wrote_it",
+    ]),
+    ("slot", "fit_app", False, [
         "l_and_r_change_the_mode_on_a_game_boy_cart_and_not_on_a_gba_one",
         "the_picture_mode_is_remembered_per_cart",
         "only_the_fitted_picture_is_softened",
@@ -97,19 +106,22 @@ FORK_TESTS = [
         "game_boy_and_game_boy_color_carts_fit_and_soften_alike",
     ]),
     ("slot-ui", "fit_bezel", False, [
-        "the_fit_bezels_only_draw_in_the_side_bars",
+        "the_fit_bezels_fill_the_side_bars_and_only_shade_the_picture_edges",
     ]),
-    ("slot-gfx", "pipeline", True, [
+    ("slot-gfx", "fit_pipeline", True, [
         "the_fitted_picture_fills_the_height_with_bars_only_at_the_sides",
         "softening_gives_every_fitted_game_boy_row_the_same_weight",
+        "the_fitted_grid_lines_every_half_game_pixel_evenly",
+        "a_screenshot_is_never_softened_even_after_a_fitted_game",
     ]),
     ("slot-gfx", "fit_colour", True, [
         "softened_colour_rows_stay_even_in_every_channel_without_fringes",
         "softened_colour_columns_stay_even_in_every_channel_without_fringes",
     ]),
-    ("slot", "render_fit_bezel", True, [
+    ("slot", "fit_render_bezel", True, [
         "the_default_bezel_in_fit_mode_lights_the_power_lamp_and_labels_the_right_bar",
         "a_bezel_from_the_card_shows_at_actual_size_and_stays_off_the_fitted_picture",
+        "a_fitted_picture_never_reads_the_card_bezel_it_hides",
     ]),
 ]
 
@@ -135,6 +147,14 @@ Rules, in priority order:
    upstream's version and say so in your notes.
 4. Code must read like the surrounding code. Do not add comments about the merge.
 
+Where the fork's code lives: all of it is in the fork's own files, `crates/*/src/fit*.rs` and
+`crates/*/tests/fit*.rs`, which upstream does not have. Upstream's files only carry small hooks
+that call into them, listed in FORK-NOTES.md section 3. So in an upstream file:
+- Take upstream's version of the file and re-add each hook the fork had there. Never copy fork
+  logic into an upstream file; if a hook no longer fits, change the code in the `fit*.rs` file.
+- Never reformat or lint-fix upstream's code, even where rustfmt or clippy would. Upstream's
+  formatting is kept exactly, so the next sync does not conflict over it.
+
 Useful commands:
 - `git diff {old_base} {upstream_ref} -- <file>`: what upstream changed since the last sync.
 - `git diff {old_base} {fork_main} -- <file>`: what the fork changed.
@@ -142,14 +162,19 @@ Useful commands:
 
 When the markers are gone, run these and fix what fails, also in files that did not conflict
 (upstream may have changed an API the fork uses). Repeat until they pass:
-1. `cargo fmt --all`
-2. `cargo clippy --workspace --all-targets -- -D warnings`
-3. `cargo clippy -p slot --no-default-features --features device -- -D warnings`
+1. `python3 .github/sync/sync_upstream.py fork-fmt`: formats the fork's own files only. Never run
+   `cargo fmt`; it would reformat upstream's code.
+2. `python3 .github/sync/sync_upstream.py fork-clippy`: fails on any compile error, and on lints
+   in the fork's own files. Lints it reports in upstream's code are upstream's; leave them.
+3. `python3 .github/sync/sync_upstream.py fork-clippy device`: the same for the device build.
 4. `cargo build --profile device --target-dir target-device -p slot --no-default-features --features device`
 5. `python3 .github/sync/sync_upstream.py fork-tests`: the fork's Fit tests. Every one must exist
-   and pass.
-6. `cargo test -p <crate>` for the crates you changed. A test that fails because a libretro core,
-   a BIOS or a display is missing on this machine is not your concern; mention it in the notes.
+   and pass. If `fit::tests::the_fit_patches_apply_to_upstreams_game_shader` fails, upstream
+   changed its game shader where the fork patches it: update `PATCHES` in
+   `crates/slot-gfx/src/fit.rs` to upstream's new text, keeping what the fork's text does.
+6. `cargo test -p <crate> --lib --tests` for the crates you changed. A test that fails because a
+   libretro core, a BIOS or a display is missing on this machine is not your concern; mention it
+   in the notes.
 
 The fork's tests are part of the fork's change and are kept like its code (FORK-NOTES.md
 section 4). Never delete, rename, `#[ignore]` or loosen one of them, and never change what it
@@ -440,20 +465,65 @@ def fork_tests():
         if mac_only and not on_mac:
             print(f"skipped {package} --test {target}: needs macOS (headless GL)")
             continue
-        r = subprocess.run(["cargo", "test", "-p", package, "--test", target, "--", "--exact", *names],
+        which = ["--lib"] if target == "lib" else ["--test", target]
+        r = subprocess.run(["cargo", "test", "-p", package, *which, "--", "--exact", *names],
                            capture_output=True, text=True)
         passed = set(re.findall(r"^test (\S+) \.\.\. ok$", r.stdout, re.M))
         for name in names:
             ok = name in passed
-            print(f"{'ok     ' if ok else 'MISSING'} {package} --test {target} {name}")
+            print(f"{'ok     ' if ok else 'MISSING'} {package} {' '.join(which)} {name}")
             if not ok:
-                failed.append(f"{package} --test {target} {name}")
+                failed.append(f"{package} {' '.join(which)} {name}")
         if r.returncode and not failed:
-            failed.append(f"{package} --test {target}: cargo test failed")
+            failed.append(f"{package} {' '.join(which)}: cargo test failed")
         if r.returncode:
             print(r.stdout[-4000:], r.stderr[-4000:], sep="\n")
     if failed:
         sys.exit("Fork tests missing or failing:\n" + "\n".join(f"- {f}" for f in failed))
+
+
+def fork_rust():
+    return git("ls-files", "--", *FORK_RUST).splitlines()
+
+
+def fork_fmt(check):
+    """rustfmt the fork's own files only; upstream's code keeps upstream's formatting."""
+    files = fork_rust()
+    r = subprocess.run(["rustfmt", "--edition", EDITION, *(["--check"] if check else []), *files])
+    if r.returncode:
+        sys.exit("The fork's files are not formatted: run python3 .github/sync/sync_upstream.py fork-fmt")
+    print(f"{'checked' if check else 'formatted'} {len(files)} fork files")
+
+
+def fork_clippy(device):
+    """Clippy over the workspace: any compile error fails, and so does any lint in a fork file.
+
+    Lints in upstream's own code are only counted, never fixed in the fork, so upstream files stay
+    as upstream wrote them. Examples are left out: upstream's need macOS and do not build on Linux.
+    """
+    if device:
+        args = ["-p", "slot", "--no-default-features", "--features", "device"]
+    else:
+        args = ["--workspace", "--lib", "--bins", "--tests"]
+    r = subprocess.run(["cargo", "clippy", *args, "--message-format=json"], capture_output=True, text=True)
+    fork = set(fork_rust())
+    failures, upstream_lints = [], 0
+    for line in r.stdout.splitlines():
+        msg = json.loads(line) if line.startswith("{") else {}
+        if msg.get("reason") != "compiler-message":
+            continue
+        m = msg["message"]
+        span = next((s for s in m["spans"] if s["is_primary"]), None)
+        where = span["file_name"] if span else ""
+        if m["level"] == "error" or (m["level"] == "warning" and where in fork):
+            failures.append(m["rendered"] or m["message"])
+        elif m["level"] == "warning":
+            upstream_lints += 1
+    print(f"{upstream_lints} warnings in upstream's own code (not the fork's to fix)")
+    if failures or (r.returncode and not upstream_lints):
+        print("\n".join(failures), r.stderr[-4000:], sep="\n")
+        sys.exit(f"{len(failures)} compile errors or lints in the fork's files")
+    print("no compile errors and no lints in the fork's files")
 
 
 def upstream_release(commit):
@@ -503,7 +573,11 @@ def tag():
     output(tag=name)
 
 if __name__ == "__main__":
-    steps = {"prepare": prepare, "verify": verify, "finish": finish, "fork-tests": fork_tests, "tag": tag}
-    if len(sys.argv) != 2 or sys.argv[1] not in steps:
-        sys.exit(f"usage: sync_upstream.py {{{'|'.join(steps)}}}")
+    steps = {
+        "prepare": prepare, "verify": verify, "finish": finish, "fork-tests": fork_tests, "tag": tag,
+        "fork-fmt": lambda: fork_fmt(check="--check" in sys.argv[2:]),
+        "fork-clippy": lambda: fork_clippy(device="device" in sys.argv[2:]),
+    }
+    if len(sys.argv) < 2 or sys.argv[1] not in steps:
+        sys.exit(f"usage: sync_upstream.py {{{'|'.join(steps)}}} [--check | device]")
     steps[sys.argv[1]]()

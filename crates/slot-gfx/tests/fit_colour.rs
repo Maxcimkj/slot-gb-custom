@@ -59,7 +59,7 @@ fn fitted(c: &mut Compositor, soft: bool, a_at: impl Fn(usize, usize) -> bool) -
     c.set_soft_picture(soft);
     c.set_screen_effect(ScreenEffect::None);
     c.set_screen_power(1.0);
-    c.begin_frame(slot_gfx::Layout::Framed);
+    c.begin_frame();
     c.upload_game(&texture);
     c.draw_game();
     c.read_frame()

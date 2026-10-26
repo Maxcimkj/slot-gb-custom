@@ -107,13 +107,14 @@ jobs:
                 "bash": {
                   "*": "deny",
                   "cargo *": "allow",
+                  "cargo fmt*": "deny",
                   "git diff*": "allow",
                   "git log*": "allow",
                   "git show*": "allow",
                   "git status*": "allow",
                   "git ls-files*": "allow",
                   "git grep*": "allow",
-                  "python3 .github/sync/sync_upstream.py fork-tests": "allow"
+                  "python3 .github/sync/sync_upstream.py fork-*": "allow"
                 },
                 "webfetch": "deny",
                 "websearch": "deny",
@@ -133,23 +134,25 @@ jobs:
         if: steps.prep.outputs.changed == 'true'
         run: python3 .github/sync/sync_upstream.py verify
 
-      - name: 'Check: formatting'
+      # Formatting and lints are the fork's own files only (fit*.rs): upstream's code is kept
+      # exactly as upstream wrote it, so it never conflicts over a reformat or a lint fix.
+      - name: 'Check: formatting of the fork files'
         id: fmt
         if: steps.verify.outcome == 'success'
         continue-on-error: true
-        run: cargo fmt --all -- --check
+        run: python3 .github/sync/sync_upstream.py fork-fmt --check
 
       - name: 'Check: clippy'
         id: clippy
         if: steps.verify.outcome == 'success'
         continue-on-error: true
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: python3 .github/sync/sync_upstream.py fork-clippy
 
       - name: 'Check: clippy for the device'
         id: clippy_device
         if: steps.verify.outcome == 'success'
         continue-on-error: true
-        run: cargo clippy -p slot --no-default-features --features device -- -D warnings
+        run: python3 .github/sync/sync_upstream.py fork-clippy device
 
       - name: 'Check: device build'
         id: device
@@ -168,7 +171,7 @@ jobs:
         if: steps.verify.outcome == 'success'
         continue-on-error: true
         timeout-minutes: 40
-        run: xvfb-run -a cargo test --workspace --no-fail-fast
+        run: xvfb-run -a cargo test --workspace --no-fail-fast --lib --bins --tests
 
       - name: Push the resolution to the pull request
         id: finish

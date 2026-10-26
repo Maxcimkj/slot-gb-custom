@@ -3,21 +3,21 @@ use std::time::{Duration, Instant};
 use slot_gfx::{Compositor, Draw, ScreenEffect, TexId, OUT_H, OUT_W};
 
 const PAPER: &[u8] = include_bytes!("../assets/paper.png");
-use crate::shot_loader::{ShotLoader, Want};
 use slot_input::{InputSource, Millis};
 use slot_power::{Platform, Power};
 use slot_store::{format_stamp, BezelPick, Platform as Console};
+use crate::shot_loader::{ShotLoader, Want};
 use slot_ui::{
     badge_face, bezel_face, cart_shadow, chip_face, chip_shadow_face, core_button_legends,
-    date_time_text, default_game_bezel_face, delete_legends, fit_game_bezel_face, footer_ink,
-    game_bezel_face, gb_cart_shadow, hhmm, hint_face, icon_face, link_button_legends,
-    menu_detail_face, menu_face, photo_face, prompt_legends, quick_caret_face,
-    quick_description_face, quick_label_face, quick_legend_faces, quick_pointer_face,
-    quick_value_face, quick_warning_value_face, rebuild_count_face, rebuild_title_face,
-    repair_legends, set_clock_hint_face, slot_back, slot_back_light, slot_front, slot_front_light,
-    socket_face, sticker_face, title_face, toast_face, wallpaper_face, word_ink, CartFace, GbShell,
-    Icon, LinkBadge, PowerChoice, QuickMenuFaces, QuickRow, QuickValue, RebuildScreen,
-    StickerFields, Toast, UndoFace, ALERT_PX, BOLT_PX, HUD_ICON_PX, HUD_INK, LEGEND,
+    date_time_text, default_game_bezel_face, delete_legends, footer_ink, game_bezel_face,
+    gb_cart_shadow, hhmm, hint_face, icon_face, link_button_legends, menu_detail_face, menu_face,
+    photo_face, prompt_legends, quick_caret_face, quick_description_face, quick_label_face,
+    quick_legend_faces, quick_pointer_face, quick_value_face, quick_warning_value_face,
+    rebuild_count_face, rebuild_title_face, repair_legends, set_clock_hint_face, slot_back,
+    slot_back_light, slot_front, slot_front_light, socket_face, sticker_face, title_face,
+    toast_face, wallpaper_face, word_ink, CartFace, GbShell, Icon, LinkBadge, PowerChoice,
+    QuickMenuFaces, QuickRow, QuickValue, RebuildScreen, StickerFields, Toast, UndoFace, ALERT_PX,
+    BOLT_PX, HUD_ICON_PX, HUD_INK, LEGEND,
 };
 
 use crate::app::{App, LinkRow, Phase};
@@ -270,11 +270,7 @@ impl Frontend {
             .collect();
         self.session.app_mut().set_shot_hint_faces(shot_hints);
         let tick = slot_ui::tick_cap_face();
-        let tick = (
-            compositor.create_texture(tick.w, tick.h, &tick.rgba),
-            tick.w,
-            tick.h,
-        );
+        let tick = (compositor.create_texture(tick.w, tick.h, &tick.rgba), tick.w, tick.h);
         self.session.app_mut().set_shot_tick_face(tick);
         let hint = set_clock_hint_face();
         self.clocks.hint = Some(compositor.create_texture(hint.w, hint.h, &hint.rgba));
@@ -1111,9 +1107,7 @@ fn sync_gallery(app: &mut App, compositor: &mut Compositor, state: &mut Switcher
     }
     for l in loader.poll() {
         match l.want {
-            Want::Thumb
-                if state.window.contains(&l.path) && !state.thumbs.contains_key(&l.path) =>
-            {
+            Want::Thumb if state.window.contains(&l.path) && !state.thumbs.contains_key(&l.path) => {
                 let id = match state.spare.pop() {
                     Some(id) => {
                         compositor.update_texture(id, l.w, l.h, &l.rgba);
@@ -1148,10 +1142,7 @@ fn sync_gallery(app: &mut App, compositor: &mut Compositor, state: &mut Switcher
                 app.set_shot_face(Some((id, l.w, l.h)));
                 state.full_pending = None;
                 if let Some(at) = state.full_asked.take() {
-                    eprintln!(
-                        "slot: gallery: full shot in {} ms",
-                        at.elapsed().as_millis()
-                    );
+                    eprintln!("slot: gallery: full shot in {} ms", at.elapsed().as_millis());
                 }
             }
             _ => {}
@@ -1244,16 +1235,14 @@ fn sync_game_bezel(app: &mut App, compositor: &mut Compositor, state: &mut Bezel
     let platform = app.playing_platform();
     let pick = app.resolved_bezel(platform);
     let (w, h) = app.game_bezel_size();
-    let fits = app.fits_picture();
-    let shown = (platform, pick, (w, h), fits);
+    let shown = (platform, pick, (w, h), app.fits_picture());
     if state.image.as_ref() != Some(&shown) {
-        let rgba = match (&shown.1, shown.3) {
-            (BezelPick::None | BezelPick::Ags102, _) => None,
-            (BezelPick::Default, false) => default_game_bezel_face(platform == Console::Gbc, w, h),
-            (BezelPick::Default, true) => fit_game_bezel_face(platform == Console::Gbc, w, h),
-            // A card bezel is drawn for the actual-size picture and would cover a fitted one.
-            (BezelPick::File(_), true) => None,
-            (BezelPick::File(name), false) => app
+        let fitted = crate::fit::game_bezel(app, platform, &shown.1, w, h);
+        let rgba = match &shown.1 {
+            _ if fitted.is_some() => fitted.flatten(),
+            BezelPick::None | BezelPick::Ags102 => None,
+            BezelPick::Default => default_game_bezel_face(platform == Console::Gbc, w, h),
+            BezelPick::File(name) => app
                 .root()
                 .map(|root| {
                     root.join(crate::bezel::GAME_BEZELS)

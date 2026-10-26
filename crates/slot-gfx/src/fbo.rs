@@ -258,7 +258,7 @@ impl Compositor {
     }
 
     pub fn set_soft_picture(&mut self, on: bool) {
-        self.game.set_soft(on);
+        self.game.soft.set(on);
     }
 
     pub fn set_game_source_rect(&mut self, rect: [f32; 4]) {

@@ -145,3 +145,54 @@ fn a_bezel_from_the_card_shows_at_actual_size_and_stays_off_the_fitted_picture()
         "{shown} of {solid} pixels of an actual-size bezel were drawn over the fitted picture"
     );
 }
+
+#[test]
+fn a_fitted_picture_never_reads_the_card_bezel_it_hides() {
+    use std::os::unix::fs::OpenOptionsExt;
+    use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+    use std::sync::Arc;
+
+    if HeadlessSurface::new().is_err() {
+        return;
+    }
+    let d = tmp_root_with_gbc_carts(&["Crystal", "Zzz"]);
+    clocked(d.path());
+    std::fs::create_dir_all(d.path().join("Config")).expect("config dir");
+    std::fs::write(d.path().join("Config/video_mode.txt"), "Crystal = fit\n").expect("save fit");
+    // A pipe blocks whoever reads it until something writes to it, so reading it shows.
+    let pipe = d.path().join("Bezels/GBC/Mine.png");
+    let made = std::process::Command::new("mkfifo").arg(&pipe).status();
+    assert!(made.is_ok_and(|s| s.success()), "mkfifo failed");
+    // Keeps letting any reader through, counting them, until the test is done.
+    let (reads, done) = (
+        Arc::new(AtomicUsize::new(0)),
+        Arc::new(AtomicBool::new(false)),
+    );
+    let watchdog = {
+        let (pipe, reads, done) = (pipe.clone(), reads.clone(), done.clone());
+        std::thread::spawn(move || {
+            while !done.load(Ordering::SeqCst) {
+                // Opening the write end without blocking only works while a reader waits on it.
+                let writer = std::fs::OpenOptions::new()
+                    .write(true)
+                    .custom_flags(libc::O_NONBLOCK)
+                    .open(&pipe);
+                if writer.is_ok() {
+                    reads.fetch_add(1, Ordering::SeqCst);
+                }
+                std::thread::sleep(Duration::from_millis(50));
+            }
+        })
+    };
+    let (_s, mut c, mut f, mut input) =
+        playing_with_bezel(d.path(), BezelPick::File("Mine.png".into()));
+    run_for(&mut f, &mut input, 0.3);
+    frame(&mut f, &mut c);
+    done.store(true, Ordering::SeqCst);
+    watchdog.join().expect("watchdog");
+    let reads = reads.load(Ordering::SeqCst);
+    assert_eq!(
+        reads, 0,
+        "the fitted picture read the card's bezel {reads} times only to hide it"
+    );
+}

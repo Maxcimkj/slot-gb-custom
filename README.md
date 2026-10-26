@@ -78,11 +78,20 @@ slot shows GB and GBC games in two modes: **Actual** (exact 3x, with the bezel) 
 - The side bars get a Fit version of the built-in Game Boy and Game Boy Color bezels.
 - Fit is softened with a sharp-bilinear filter. At 3.33x, plain nearest-neighbour scaling makes
   rows alternate between 3 and 4 pixels tall, which shows as shimmer when the game scrolls.
-- GBA games have no Fit mode and are not affected.
+- With the Grid screen effect, Fit draws a finer grid, two cells per game pixel, so the lines
+  come out even.
+- Everything else is slot as it is: Actual, Stretch, GBA games (which have no Fit), screenshots
+  in the album and every other screen effect look and behave exactly as in slot.
 
 ### Fit with bezels
 
-The side bars hold Fit versions of the built-in bezels: Game Boy (left) and Game Boy Color (right).
+The side bars hold Fit versions of the built-in bezels: Game Boy (left) and Game Boy Color
+(right). They use the same grey body, black screen frame and inner shadow on the picture's edge
+as the Actual bezels, so the full-height picture looks set in the same screen. The lamp and its
+label sit at the same height as on the Actual bezel; the console's name runs up the right bar.
+
+Bezels from the card (`Bezels/GB`, `Bezels/GBC`) are drawn for the Actual picture and would
+cover a fitted one, so Fit hides them; they show again in Actual.
 
 <p align="center">
 <img src=".github/resources/fork/fit-gb.png" width="48%" alt="Fit mode on a Game Boy game, with the Fit bezel's battery lamp and GAME BOY label in the side bars">
@@ -102,6 +111,16 @@ picture: every row ends up the same height.
 <img src=".github/resources/fork/fit-softening-zoom.png" width="60%" alt="Close-up of the same comparison: uneven rows on the left, even rows on the right">
 </p>
 
+### Fit with the Grid effect
+
+slot's Grid effect draws a line around every game pixel. At Fit's 3.33x those lines land
+unevenly: some are one dark pixel, others are smeared over two lighter ones. Fit gives the grid
+two cells per game pixel instead, a fine mesh with even lines. Actual and Stretch keep slot's grid.
+
+<p align="center">
+<img src=".github/resources/fork/fit-grid-zoom.png" width="60%" alt="Close-up of the Grid effect in Fit. Left: one cell per game pixel, with uneven lines. Right: two cells per game pixel, an even mesh">
+</p>
+
 ### Screen sizes
 
 Fit is designed for 3:2 panels such as the RG SP (720x480), where the side bars are about 93 px
@@ -112,6 +131,10 @@ wide. On 4:3 panels it still works, but thin bars stay at the top and bottom.
 The fork keeps up with upstream on its own. Once a day, a workflow merges any new slot changes
 into the fork, re-applies Fit on top, runs the build and the fork's tests, and publishes a new
 fork release, so the fork stays on the newest slot version.
+
+To keep those merges easy, all of Fit lives in the fork's own `fit*.rs` files. slot's files stay
+exactly as slot wrote them, apart from a few one-line hooks into Fit, so new slot versions merge
+in without touching the fork's code. [`FORK-NOTES.md`](FORK-NOTES.md) lists every hook.
 
 Fork releases are tagged `v<slot version>-gp-custom.<n>`, for example `v1.9.0-gp-custom.1` is
 slot 1.9.0 plus Fit. Their release notes are slot's.
