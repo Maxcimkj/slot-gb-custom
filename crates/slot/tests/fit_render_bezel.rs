@@ -146,24 +146,22 @@ fn a_bezel_from_the_card_shows_at_actual_size_and_stays_off_the_fitted_picture()
     );
 }
 
-#[test]
-fn a_fitted_picture_never_reads_the_card_bezel_it_hides() {
+/// Plays a GBC cart saved as Fit with a card bezel picked, runs `steps`, and counts how often the
+/// card's bezel file was read. The file is a pipe, which blocks whoever reads it until something
+/// writes to it, so every read shows.
+fn card_bezel_reads(steps: impl FnOnce(&mut Frontend, &mut Compositor, &mut Script)) -> usize {
     use std::os::unix::fs::OpenOptionsExt;
     use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
     use std::sync::Arc;
 
-    if HeadlessSurface::new().is_err() {
-        return;
-    }
     let d = tmp_root_with_gbc_carts(&["Crystal", "Zzz"]);
     clocked(d.path());
     std::fs::create_dir_all(d.path().join("Config")).expect("config dir");
     std::fs::write(d.path().join("Config/video_mode.txt"), "Crystal = fit\n").expect("save fit");
-    // A pipe blocks whoever reads it until something writes to it, so reading it shows.
     let pipe = d.path().join("Bezels/GBC/Mine.png");
     let made = std::process::Command::new("mkfifo").arg(&pipe).status();
     assert!(made.is_ok_and(|s| s.success()), "mkfifo failed");
-    // Keeps letting any reader through, counting them, until the test is done.
+    // Keeps letting any reader through, counting them, until the steps are done.
     let (reads, done) = (
         Arc::new(AtomicUsize::new(0)),
         Arc::new(AtomicBool::new(false)),
@@ -188,11 +186,38 @@ fn a_fitted_picture_never_reads_the_card_bezel_it_hides() {
         playing_with_bezel(d.path(), BezelPick::File("Mine.png".into()));
     run_for(&mut f, &mut input, 0.3);
     frame(&mut f, &mut c);
+    steps(&mut f, &mut c, &mut input);
     done.store(true, Ordering::SeqCst);
     watchdog.join().expect("watchdog");
-    let reads = reads.load(Ordering::SeqCst);
+    reads.load(Ordering::SeqCst)
+}
+
+#[test]
+fn a_fitted_picture_never_reads_the_card_bezel_it_hides() {
+    if HeadlessSurface::new().is_err() {
+        return;
+    }
+    let reads = card_bezel_reads(|_, _, _| {});
     assert_eq!(
         reads, 0,
         "the fitted picture read the card's bezel {reads} times only to hide it"
+    );
+}
+
+#[test]
+fn stepping_through_stretch_never_reads_the_hidden_card_bezel() {
+    if HeadlessSurface::new().is_err() {
+        return;
+    }
+    let reads = card_bezel_reads(|f, c, input| {
+        for btn in [Btn::L1, Btn::R1] {
+            tap(f, input, btn);
+            run_for(f, input, 0.3);
+            frame(f, c);
+        }
+    });
+    assert_eq!(
+        reads, 0,
+        "Fit to Stretch and back read the card's bezel {reads} times, and neither shows it"
     );
 }

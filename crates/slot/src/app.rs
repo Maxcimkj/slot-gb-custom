@@ -1719,8 +1719,8 @@ impl App {
         video_mode::source_rect(self.platform, self.video_mode)
     }
 
-    pub fn fits_picture(&self) -> bool {
-        crate::fit::fits(self.platform, self.video_mode)
+    pub fn picture_mode(&self) -> (Platform, VideoMode) {
+        (self.platform, self.video_mode)
     }
 
     fn slot_owns_the_shoulders(&self) -> bool {

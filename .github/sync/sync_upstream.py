@@ -92,7 +92,11 @@ CHECKS = [
 FORK_TESTS = [
     ("slot-gfx", "lib", False, [
         "fit::tests::the_fit_patches_apply_to_upstreams_game_shader",
+        "fit::tests::the_other_modes_skip_the_softening_with_a_branch",
         "fit::tests::a_shader_the_patches_do_not_fit_is_left_as_upstream_wrote_it",
+    ]),
+    ("slot", "lib", False, [
+        "fit::tests::the_crop_and_the_fitted_check_agree",
     ]),
     ("slot", "fit_app", False, [
         "l_and_r_change_the_mode_on_a_game_boy_cart_and_not_on_a_gba_one",
@@ -100,6 +104,7 @@ FORK_TESTS = [
         "only_the_fitted_picture_is_softened",
         "the_fitted_picture_keeps_its_bezel_and_the_stretched_one_drops_it",
         "a_gba_cart_saved_as_fit_still_shows_the_whole_picture",
+        "nothing_counts_as_fitted_once_the_cart_is_out",
     ]),
     ("slot", "fit_softening", False, [
         "a_game_boy_color_cart_is_softened_only_while_fitted",
@@ -111,7 +116,7 @@ FORK_TESTS = [
     ("slot-gfx", "fit_pipeline", True, [
         "the_fitted_picture_fills_the_height_with_bars_only_at_the_sides",
         "softening_gives_every_fitted_game_boy_row_the_same_weight",
-        "the_fitted_grid_lines_every_half_game_pixel_evenly",
+        "the_fitted_grid_lines_every_game_pixel_as_in_the_other_modes",
         "a_screenshot_is_never_softened_even_after_a_fitted_game",
     ]),
     ("slot-gfx", "fit_colour", True, [
@@ -122,6 +127,7 @@ FORK_TESTS = [
         "the_default_bezel_in_fit_mode_lights_the_power_lamp_and_labels_the_right_bar",
         "a_bezel_from_the_card_shows_at_actual_size_and_stays_off_the_fitted_picture",
         "a_fitted_picture_never_reads_the_card_bezel_it_hides",
+        "stepping_through_stretch_never_reads_the_hidden_card_bezel",
     ]),
 ]
 

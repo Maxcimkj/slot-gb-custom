@@ -1,9 +1,10 @@
-//! Fork: the Fit picture's softening and its finer grid, kept out of upstream's shader.
+//! Fork: the Fit picture's softening, kept out of upstream's shader.
 //!
 //! `game_frag` patches upstream's `GAME_FRAG` at a few anchors instead of editing it, so an
 //! upstream change to the shader merges cleanly. If upstream rewrites an anchor, slot runs
-//! upstream's shader unpatched (Fit then only loses its softening and finer grid), and the unit
-//! test below fails on any machine, GPU or not, so the sync catches it.
+//! upstream's shader unpatched (Fit then only loses its softening), and
+//! `the_fit_patches_apply_to_upstreams_game_shader` below fails on any machine, GPU or not, so
+//! the sync catches it.
 
 /// Sharp bilinear: hard texels that blend only across the one screen line where two meet.
 const SOFT_TEXEL: &str = "uniform float u_soft;
@@ -22,26 +23,23 @@ vec3 soft_texel(vec2 uv) {
 ";
 
 /// (what it is, upstream's text, the fork's text). Each anchor must occur exactly once.
-const PATCHES: [(&str, &str, &str); 3] = [
+const PATCHES: &[(&str, &str, &str)] = &[
     ("the softening function", "varying vec2 v_uv;\n", SOFT_TEXEL),
     (
         "the first sample",
         "vec3 c = texture2D(u_game, uv).rgb;",
-        "vec3 c = u_soft > 0.5 ? soft_texel(uv) : texture2D(u_game, uv).rgb;",
-    ),
-    // The softened (fitted) picture gets two grid cells per game pixel; the rest keep one.
-    (
-        "the grid",
-        "vec2 hp = 0.5 * u_uv.zw * u_src / (u_rect.zw * u_fbo);
-        vec2 edge = (grid_band(f + hp) - grid_band(f - hp)) / (2.0 * hp);",
-        "float cells = u_soft > 0.5 ? 2.0 : 1.0;
-        vec2 hp = 0.5 * cells * u_uv.zw * u_src / (u_rect.zw * u_fbo);
-        vec2 g = fract(uv * u_src * cells);
-        vec2 edge = (grid_band(g + hp) - grid_band(g - hp)) / (2.0 * hp);",
+        // A branch on a uniform: every pixel of a frame takes the same side, so Actual, Stretch
+        // and GBA skip soft_texel's four fetches. A ternary may be flattened to run both.
+        "vec3 c;
+    if (u_soft > 0.5) {
+        c = soft_texel(uv);
+    } else {
+        c = texture2D(u_game, uv).rgb;
+    }",
     ),
 ];
 
-/// Upstream's game shader with the Fit softening and grid patched in, or upstream's shader as it
+/// Upstream's game shader with the Fit softening patched in, or upstream's shader as it
 /// is when an anchor is missing or not unique.
 pub(crate) fn game_frag(upstream: &str) -> String {
     let mut src = upstream.to_string();
@@ -93,6 +91,16 @@ mod tests {
         for (_, _, to) in PATCHES {
             assert!(src.contains(to));
         }
+    }
+
+    #[test]
+    fn the_other_modes_skip_the_softening_with_a_branch() {
+        let src = game_frag(crate::shaders::GAME_FRAG);
+        assert!(src.contains("if (u_soft > 0.5) {"), "no branch on u_soft");
+        assert!(
+            !src.contains("? soft_texel"),
+            "a ternary may run soft_texel's four fetches in every mode"
+        );
     }
 
     #[test]

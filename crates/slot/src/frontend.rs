@@ -1235,11 +1235,10 @@ fn sync_game_bezel(app: &mut App, compositor: &mut Compositor, state: &mut Bezel
     let platform = app.playing_platform();
     let pick = app.resolved_bezel(platform);
     let (w, h) = app.game_bezel_size();
-    let shown = (platform, pick, (w, h), app.fits_picture());
+    let shown = crate::fit::bezel_key(app, (platform, pick, (w, h)), state.image.as_ref());
     if state.image.as_ref() != Some(&shown) {
-        let fitted = crate::fit::game_bezel(app, platform, &shown.1, w, h);
         let rgba = match &shown.1 {
-            _ if fitted.is_some() => fitted.flatten(),
+            _ if shown.3 => crate::fit::game_bezel(platform, &shown.1, w, h),
             BezelPick::None | BezelPick::Ags102 => None,
             BezelPick::Default => default_game_bezel_face(platform == Console::Gbc, w, h),
             BezelPick::File(name) => app
