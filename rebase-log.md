@@ -2,6 +2,79 @@
 
 One record per upstream sync, newest first. Written by `.github/workflows/sync-upstream.yml`; see `FORK-NOTES.md` for how the fork is kept.
 
+## 2026-10-27 10:45 UTC · upstream `20703ed` → `db1e370`
+
+Pull request: https://github.com/Maxcimkj/slot-gb-custom/pull/11
+Run: https://github.com/Maxcimkj/slot-gb-custom/actions/runs/40489569087
+
+### Upstream changes (3 commits)
+
+- `db1e370` Give GBA Video its own shelf and keep the Game Boy Player off for it, closes #140 (Brandon T. Kowalski)
+- `aa8bfab` Close the audio device before powering off or restarting, closes #142 (Brandon T. Kowalski)
+- `ab67ece` Set the jumped-to letter at the title size, closes #151 (Brandon T. Kowalski)
+
+### Fork changes kept on top (5 commits)
+
+- `b9adfc6` Fit: upstream's Grid, softening only in Fit, Fit decided from a seated cart
+- `35cbb3f` Fit: Actual-style bezels, even grid, and all fork code in fit*.rs
+- `8575439` Make README.md the fork's own and keep it on every upstream sync
+- `c59df76` Take release notes for -gp-custom tags from the upstream version's section
+- `0b46d92` Add new fit mode for gb, gbc and bezels
+
+### Conflicts
+
+None. Upstream merged cleanly into the fork.
+
+#### Agent notes
+
+The merge of upstream `db1e370` into the fork was clean: no file carried conflict markers, so every
+hook in FORK-NOTES.md section 3 was kept by git without hand editing. Upstream's three commits add
+`Platform::Gbav` (GBA Video) with a `hardware()` helper, close the audio device on restart and
+poweroff, and set the jumped-to letter at the title size. Two files needed hand work for the build.
+
+##### crates/slot/src/fit.rs
+
+Upstream added a fourth `Platform` variant, `Gbav` (GBA Video), and a `Platform::hardware()` method
+that folds it back onto `Platform::Gba`. The fork's `fits` decided Fit from `platform !=
+Platform::Gba`, which would have fitted and softened a GBA Video cart even though FORK-NOTES.md says
+GBA has no Fit. I changed it to `platform.hardware() != Platform::Gba` so Gbav behaves like Gba, and
+added `Platform::Gbav` to the list of platforms the `the_crop_and_the_fitted_check_agree` test
+covers, so it still checks every platform. The assertion itself is unchanged.
+
+##### crates/slot-gfx/tests/pipeline.rs
+
+Upstream's `pipeline.rs` test imports `slot_gfx::HeadlessSurface`, which upstream gates behind
+`#[cfg(target_os = "macos")]`, so the target does not compile on this Linux runner. The fork's own
+`fit_pipeline.rs` and upstream's `layout.rs` are both macOS-gated, and the fork's `pipeline.rs` had
+the same gate before fork commit `35cbb3f` removed it. I re-added `#![cfg(target_os = "macos")]` at
+the top so `fork-clippy` (which builds every test target) compiles; no upstream code or assertion
+changed. This is a build fix, not a formatting or lint change.
+
+##### Checks
+
+- `python3 .github/sync/sync_upstream.py fork-fmt` and `fork-fmt --check`: passed (9 fork files).
+- `python3 .github/sync/sync_upstream.py fork-clippy`: passed, no compile errors and no lints in the
+  fork's files.
+- `python3 .github/sync/sync_upstream.py fork-clippy device`: passed.
+- `cargo build --profile device --target-dir target-device -p slot --no-default-features --features
+  device`: passed.
+- `python3 .github/sync/sync_upstream.py fork-tests`: every Linux Fit test ran and passed; the
+  macOS-only `fit_pipeline`, `fit_colour` and `fit_render_bezel` tests were skipped as expected.
+- `cargo test -p slot-gfx --lib --tests`: passed.
+- `cargo test -p slot --lib --tests`: passed. Tests that need a real mgba core fall back to the mock
+  core on this machine; none failed for a missing core, BIOS or display.
+
+### Checks
+
+| Check | Result |
+|---|---|
+| `sync_upstream.py fork-fmt --check`: rustfmt on the fork's own files | ✅ success |
+| `sync_upstream.py fork-clippy`: builds everything, lints the fork's own files | ✅ success |
+| `sync_upstream.py fork-clippy device`: the same for the device build | ✅ success |
+| `cargo build --profile device -p slot --no-default-features --features device` | ✅ success |
+| `sync_upstream.py fork-tests`: the fork's Fit tests (FORK-NOTES.md section 4) | ✅ success |
+| `cargo test --workspace --no-fail-fast --lib --bins --tests` (advisory: some tests need cores the runner lacks) | ✅ success |
+
 ## 2026-10-23 10:17 UTC · upstream `91499a9` → `20703ed`
 
 Pull request: https://github.com/Maxcimkj/slot-gb-custom/pull/6

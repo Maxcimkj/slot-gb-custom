@@ -92,6 +92,10 @@ impl Session {
         self.sink.ring()
     }
 
+    pub fn close_audio(&mut self) {
+        self.sink.close();
+    }
+
     pub fn rumble(&mut self, strength: u16) {
         if strength == self.motor {
             return;
@@ -536,7 +540,8 @@ impl Session {
                 };
                 launch("resume state read");
                 let palette = crate::core::palette_for(chosen, platform, &rom, player);
-                let opened = open_core(&root, core, platform, serial, colour, palette, player);
+                let mut opened = open_core(&root, core, platform, serial, colour, palette, player);
+                crate::core::apply_game_boy_player(&mut *opened.core, core, platform, &rom);
                 launch("core opened");
                 let sav = persist::read_sav(&root, platform, &stem);
                 launch("save read");

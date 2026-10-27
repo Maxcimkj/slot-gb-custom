@@ -45,7 +45,7 @@ impl App {
 
 /// Whether the picture is fitted: Fit on any cart but a GBA one, which has no Fit.
 pub fn fits(platform: Platform, mode: VideoMode) -> bool {
-    mode == VideoMode::Fit && platform != Platform::Gba
+    mode == VideoMode::Fit && platform.hardware() != Platform::Gba
 }
 
 /// The fitted picture's source rect, or None to leave it to upstream's modes. The picture's rows
@@ -103,7 +103,7 @@ mod tests {
 
     #[test]
     fn the_crop_and_the_fitted_check_agree() {
-        for platform in [Platform::Gb, Platform::Gbc, Platform::Gba] {
+        for platform in [Platform::Gb, Platform::Gbc, Platform::Gba, Platform::Gbav] {
             for mode in [VideoMode::Actual, VideoMode::Fit, VideoMode::Stretch] {
                 assert_eq!(
                     source_rect(platform, mode).is_some(),
