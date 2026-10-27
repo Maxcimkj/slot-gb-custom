@@ -9,6 +9,7 @@ pub const VIDEO_MODE_FILE: &str = "Config/video_mode.txt";
 pub enum VideoMode {
     #[default]
     Actual,
+    Fit,
     Stretch,
 }
 
@@ -16,6 +17,7 @@ impl VideoMode {
     pub fn as_str(self) -> &'static str {
         match self {
             VideoMode::Actual => "actual",
+            VideoMode::Fit => "fit",
             VideoMode::Stretch => "stretch",
         }
     }
@@ -23,6 +25,7 @@ impl VideoMode {
     pub fn parse(s: &str) -> Option<VideoMode> {
         match s.trim().to_ascii_lowercase().as_str() {
             "actual" => Some(VideoMode::Actual),
+            "fit" => Some(VideoMode::Fit),
             "stretch" => Some(VideoMode::Stretch),
             _ => None,
         }
@@ -41,6 +44,9 @@ pub fn write_video_mode(root: &Path, stem: &str, mode: VideoMode) -> std::io::Re
 }
 
 pub fn source_rect(platform: Platform, mode: VideoMode) -> [f32; 4] {
+    if let Some(rect) = crate::fit::source_rect(platform, mode) {
+        return rect;
+    }
     let (w, h) = platform.picture();
     if mode == VideoMode::Actual || (w, h) == (SRC_W, SRC_H) {
         return WHOLE_TEXTURE;
