@@ -5,6 +5,7 @@
 
 use slot_gfx::{OUT_H, OUT_W, SRC_H, SRC_W};
 use slot_store::{BezelPick, Platform};
+use slot_ui::BezelArt;
 
 use crate::app::App;
 use crate::video_mode::VideoMode;
@@ -65,26 +66,26 @@ pub fn source_rect(platform: Platform, mode: VideoMode) -> Option<[f32; 4]> {
     ])
 }
 
-/// The frontend's bezel cache key: platform, pick, size and whether the picture is fitted.
-pub type BezelKey = (Platform, BezelPick, (u32, u32), bool);
+/// The frontend's bezel cache key: platform, pick, art, size and whether the picture is fitted.
+pub type BezelKey = (Platform, BezelPick, Option<BezelArt>, (u32, u32), bool);
 
 /// The bezel cache key for what is on screen. Stretch shows no bezel, so while stretched the
 /// cached bezel is kept as it is: leaving Fit for Stretch, or coming back, loads nothing.
 pub fn bezel_key(
     app: &App,
-    (platform, pick, size): (Platform, BezelPick, (u32, u32)),
+    (platform, pick, art, size): (Platform, BezelPick, Option<BezelArt>, (u32, u32)),
     cached: Option<&BezelKey>,
 ) -> BezelKey {
     let fits = match cached {
-        Some((p, b, s, fits))
+        Some((p, b, a, s, fits))
             if app.picture_mode().1 == VideoMode::Stretch
-                && (*p, b, *s) == (platform, &pick, size) =>
+                && (*p, b, *a, *s) == (platform, &pick, art, size) =>
         {
             *fits
         }
         _ => app.fits_picture(),
     };
-    (platform, pick, size, fits)
+    (platform, pick, art, size, fits)
 }
 
 /// The bezel over a fitted picture. The built-in bezel has a Fit version; every other pick (a

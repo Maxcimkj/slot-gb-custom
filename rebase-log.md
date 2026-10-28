@@ -2,6 +2,73 @@
 
 One record per upstream sync, newest first. Written by `.github/workflows/sync-upstream.yml`; see `FORK-NOTES.md` for how the fork is kept.
 
+## 2026-10-28 11:31 UTC · upstream `db1e370` → `34cd2ff`
+
+Pull request: https://github.com/Maxcimkj/slot-gb-custom/pull/12
+Run: https://github.com/Maxcimkj/slot-gb-custom/actions/runs/40679217991
+
+### Upstream changes (16 commits)
+
+- `34cd2ff` Title the first boot clock and let B read Done there (Brandon T. Kowalski)
+- `1f9753d` Update the menu tests for the Scale and Stretch rows (Brandon T. Kowalski)
+- `5edec20` Rework the clock screen into a list with cities, summer time and a 12-hour clock (Brandon T. Kowalski)
+- `546d565` Make the GBAV folders at boot (Brandon T. Kowalski)
+- `c55fd68` Document the 1.10.0 features and add a changelog page (Brandon T. Kowalski)
+- `e2bf315` Add Frame Blending to each Screen page and the in-game Screen page, closes #66 (454135431515)
+- `0572cf1` Add CONTRIBUTIONS.md (Brandon T. Kowalski)
+- `39c05b2` Show B Cancel on the link picker and let Mode take Link's place (Brandon T. Kowalski)
+- `c403597` Format the workspace with rustfmt (Brandon T. Kowalski)
+- `3a9b0ab` Set the shelf name at the jumped-to letter size, refs #151 (Brandon T. Kowalski)
+- `7023751` Join the d-pad legend into one button, drop the value arrows and tighten the pointer, closes #153 (Brandon T. Kowalski)
+- `b01232e` Light every brightness step and add one to the curve (Brandon T. Kowalski)
+- `d2edb86` Add built-in Game Boy bezels for the Integer and Fit pictures (Brandon T. Kowalski)
+- `103aa7d` Add a Game Boy Fit scale that shows the whole picture as large as it fits (Karl Prieb)
+- `466ef59` Add Scale and Stretch settings for the Game Boy and GBA picture (Brandon T. Kowalski)
+- `68b73d7` Switch the CPU to the schedutil governor at startup (Brandon T. Kowalski)
+
+### Fork changes kept on top (5 commits)
+
+- `b9adfc6` Fit: upstream's Grid, softening only in Fit, Fit decided from a seated cart
+- `35cbb3f` Fit: Actual-style bezels, even grid, and all fork code in fit*.rs
+- `8575439` Make README.md the fork's own and keep it on every upstream sync
+- `c59df76` Take release notes for -gp-custom tags from the upstream version's section
+- `0b46d92` Add new fit mode for gb, gbc and bezels
+
+### Conflicts
+
+- Resolved by OpenCode with deepseek/deepseek-v4.1-flash: `crates/slot/src/frontend.rs`, `crates/slot/src/video_mode.rs`, `site/docs/guide/controls.md`, `site/docs/guide/screen.md`
+
+#### Agent notes
+
+##### crates/slot/src/video_mode.rs
+Upstream replaced `source_rect` with `picture_for`, returning a `Sizing` plus a source rect, and added `Scale`/`Stretch` settings including its own `Scale::Fit`. The fork adds a `VideoMode::Fit` stepped to by L1/R1, so its crop is still needed as a mode. I kept upstream's `picture_for` and match, and made the `VideoMode::Fit` arm return `Sizing::Band` with `fit::source_rect`, which gives the fork's full-height 720x480 picture with side bars and keeps upstream's Scale handling for every other mode.
+
+##### crates/slot/src/frontend.rs
+Upstream's bezel cache now carries an `Option<BezelArt>` and builds the default bezel from that art, and `compose` now also sets the game layout. The fork keeps a cached "fitted" flag so Fit to Stretch and back loads no hidden card bezel, and draws its own Fit bezel. I kept upstream's art key and `bezel_key` helper, extended the fork's key with the art value, and kept both `set_game_layout` and `set_soft_picture` in `compose`; the fitted arm still uses `fit::game_bezel`.
+
+##### crates/slot/src/fit.rs
+Upstream now has its own `BezelArt` for Integer and Fit pictures. The fork's cache key must include that art alongside the fitted flag so it can reuse the cached bezel while stretched. I widened `BezelKey` and `bezel_key` to carry `Option<BezelArt>`, leaving the crop, fit checks, softening and bezel hiding logic unchanged.
+
+##### site/docs/guide/controls.md
+Upstream changed the L1/R1 line to say Stretch and back to the Scale setting. The fork says L1 steps bigger through a full-height picture before stretching and R1 steps back. I kept upstream's Scale wording and re-applied the fork's stepping description on the same line.
+
+##### site/docs/guide/screen.md
+Upstream rewrote the Stretching section with the Classic and Full Screen settings and changed the bezel sentence. The fork describes L1 growing the picture to full height first, then stretching, with R1 stepping back. I kept upstream's Stretch settings and paragraph structure, re-applied the fork's L1/R1 wording, and kept upstream's broader bezel sentence because it still holds in Fit.
+
+##### Checks
+`fork-fmt` formatted the fork files. `fork-clippy`, `fork-clippy device`, the device build, and `fork-tests` all pass; all non-macOS Fit tests ran and passed, while the macOS-only render tests were skipped on Linux. `cargo test -p slot --lib --tests` and `cargo test -p slot-gfx --lib --tests` also pass; tests that need missing libretro cores fall back to the mock or report it, as before.
+
+### Checks
+
+| Check | Result |
+|---|---|
+| `sync_upstream.py fork-fmt --check`: rustfmt on the fork's own files | ✅ success |
+| `sync_upstream.py fork-clippy`: builds everything, lints the fork's own files | ✅ success |
+| `sync_upstream.py fork-clippy device`: the same for the device build | ✅ success |
+| `cargo build --profile device -p slot --no-default-features --features device` | ✅ success |
+| `sync_upstream.py fork-tests`: the fork's Fit tests (FORK-NOTES.md section 4) | ✅ success |
+| `cargo test --workspace --no-fail-fast --lib --bins --tests` (advisory: some tests need cores the runner lacks) | ✅ success |
+
 ## 2026-10-27 10:45 UTC · upstream `20703ed` → `db1e370`
 
 Pull request: https://github.com/Maxcimkj/slot-gb-custom/pull/11
