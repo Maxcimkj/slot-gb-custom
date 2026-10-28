@@ -74,15 +74,15 @@ GBA has no Scale row on these devices.
 
 ## Stretching
 
-Just like the OG, <kbd>L1</kbd> stretches Game Boy and Game Boy Color games across the screen. <kbd>R1</kbd> puts them
-back. slot remembers your pick per game.
+Just like the OG, <kbd>L1</kbd> makes Game Boy and Game Boy Color games bigger: first to the full screen height, then
+stretched across the screen. <kbd>R1</kbd> steps them back. slot remembers your pick per game.
 
 The Stretch setting decides how far <kbd>L1</kbd> stretches them:
 
 - **Classic** stretches across a GBA-sized screen, like a GBA SP. This is the default.
 - **Full Screen** stretches to the edges of the whole screen.
 
-Bezels are hidden while a game is stretched.
+Bezels are hidden when the picture fills the screen.
 
 ## Frame blending
 
