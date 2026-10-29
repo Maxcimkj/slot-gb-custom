@@ -2,6 +2,53 @@
 
 One record per upstream sync, newest first. Written by `.github/workflows/sync-upstream.yml`; see `FORK-NOTES.md` for how the fork is kept.
 
+## 2026-10-29 11:38 UTC · upstream `34cd2ff` → `729c61d`
+
+Pull request: https://github.com/Maxcimkj/slot-gb-custom/pull/13
+Run: https://github.com/Maxcimkj/slot-gb-custom/actions/runs/40866035828
+
+### Upstream changes (7 commits)
+
+- `729c61d` Update CHANGELOG.md (Brandon T. Kowalski)
+- `35c1075` Note the stutter fix, Fast Forward Toggle and 1.5x in the changelog and docs (Brandon T. Kowalski)
+- `a4c3bb2` Add a 1.5x fast forward speed, closes #161 (Brandon T. Kowalski)
+- `1e69a62` Count a frame as stale only when the core was pacing it (Brandon T. Kowalski)
+- `1fa71e3` Keep the audio device open while headphones are in so they do not buzz after the sound stops, closes #163 (Brandon T. Kowalski)
+- `ade9a49` Add a Fast Forward Toggle shortcut that one press starts and the next stops, closes #164 (Brandon T. Kowalski)
+- `5a223f5` Leave the CPU governor at the kernel default and count stale frames, closes #162 (Brandon T. Kowalski)
+
+### Fork changes kept on top (5 commits)
+
+- `b9adfc6` Fit: upstream's Grid, softening only in Fit, Fit decided from a seated cart
+- `35cbb3f` Fit: Actual-style bezels, even grid, and all fork code in fit*.rs
+- `8575439` Make README.md the fork's own and keep it on every upstream sync
+- `c59df76` Take release notes for -gp-custom tags from the upstream version's section
+- `0b46d92` Add new fit mode for gb, gbc and bezels
+
+### Conflicts
+
+None. Upstream merged cleanly into the fork.
+
+#### Agent notes
+
+##### Sync notes
+
+No source files needed changes. The merge of `e9bab61` into upstream `729c61d` was already clean: every conflict was resolved with upstream's version and the fork's `fit*.rs` files, and no conflict markers remain. I verified the fork hooks in `crates/slot/src/app.rs`, `crates/slot/src/video_mode.rs`, `crates/slot/src/frontend.rs`, `crates/slot/src/lib.rs`, `crates/slot-gfx/src/{lib,pipeline,fbo}.rs`, `crates/slot-ui/src/lib.rs`, `crates/slot/tests/app.rs`, the three `site/docs` pages and `.gitignore`, and they all still call the unchanged `fit*.rs` code. Upstream's formatting was left untouched, and `fork-fmt` produced no diff.
+
+##### Checks
+All required checks passed: `fork-fmt` (9 fork files checked, no diff), `fork-clippy`, `fork-clippy device`, the device build, `fork-tests` (every Fit test passed; macOS-only render tests skipped on Linux), and `cargo test -p slot-gfx -p slot-ui -p slot --lib --tests`. Nothing needed fixing. Tests that need a libretro core fell back to the mock as usual, and the macOS-only render tests could not run on this machine.
+
+### Checks
+
+| Check | Result |
+|---|---|
+| `sync_upstream.py fork-fmt --check`: rustfmt on the fork's own files | ✅ success |
+| `sync_upstream.py fork-clippy`: builds everything, lints the fork's own files | ✅ success |
+| `sync_upstream.py fork-clippy device`: the same for the device build | ✅ success |
+| `cargo build --profile device -p slot --no-default-features --features device` | ✅ success |
+| `sync_upstream.py fork-tests`: the fork's Fit tests (FORK-NOTES.md section 4) | ✅ success |
+| `cargo test --workspace --no-fail-fast --lib --bins --tests` (advisory: some tests need cores the runner lacks) | ✅ success |
+
 ## 2026-10-28 11:31 UTC · upstream `db1e370` → `34cd2ff`
 
 Pull request: https://github.com/Maxcimkj/slot-gb-custom/pull/12
