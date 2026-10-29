@@ -132,7 +132,7 @@ Hold <kbd>Y</kbd>
 :   Turbo <kbd>B</kbd>
 
 <kbd>L1</kbd> / <kbd>R1</kbd>
-:   Stretch / back to the Scale setting.<br>Game Boy and Game Boy Color only.
+:   Bigger: original size, full height, stretched / smaller, back to the Scale setting.<br>Game Boy and Game Boy Color only.
 
 </div>
 

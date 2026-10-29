@@ -12,6 +12,7 @@ mod board;
 mod cart;
 mod clock;
 mod draw;
+mod fit_bezel;
 mod footer;
 mod hud;
 mod icon;
@@ -36,6 +37,7 @@ pub use backdrop::{
     bezel_face, blur_background, default_background, default_game_bezel_face, draw_backdrop,
     draw_ground, game_bezel_face, wallpaper_face, BezelArt,
 };
+pub use fit_bezel::fit_game_bezel_face;
 pub use barcode::{code39, CODE39_NARROW, CODE39_WIDE};
 pub use battery::{draw_gauge, BOLT_PX, GAUGE_H, GAUGE_W, WALL};
 pub use board::{
