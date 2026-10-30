@@ -2,6 +2,153 @@
 
 One record per upstream sync, newest first. Written by `.github/workflows/sync-upstream.yml`; see `FORK-NOTES.md` for how the fork is kept.
 
+## 2026-10-30 11:35 UTC · upstream `729c61d` → `c19ccbc`
+
+Pull request: https://github.com/Maxcimkj/slot-gb-custom/pull/14
+Run: https://github.com/Maxcimkj/slot-gb-custom/actions/runs/41047861227
+
+### Upstream changes (13 commits)
+
+- `c19ccbc` Update the docs cart image (Brandon T. Kowalski)
+- `f8e951b` Update README.md (Brandon T. Kowalski)
+- `efff251` Publish versions.json with the site for the update check (Brandon T. Kowalski)
+- `7e83165` Add Discord links to the README, CONTRIBUTING and the site (Brandon T. Kowalski)
+- `80cbb6a` Group the Shortcuts list by what each one does (Brandon T. Kowalski)
+- `67a60e1` Add game guides with an in-game viewer, a Guide menu row and a shortcut, closes #167 (Brandon T. Kowalski)
+- `8f3b672` Add a Reset Game shortcut with Undo Reset, closes #168 (Brandon T. Kowalski)
+- `c7a79b9` Keep the first Game Boy frame after the LCD turns on blank in mGBA, closes #169 (Brandon T. Kowalski)
+- `5903cf4` Pick bezels per Scale by name suffix, lift the game under bezels solid below it, and rename SP Frame to SP Screen, closes #159 (Brandon T. Kowalski)
+- `e6d9604` Document Shimmerless, Saturation and Contrast, and the Ghosting and FF Toggle names (Brandon T. Kowalski)
+- `ded7ba2` Add the Shimmerless shader, Saturation and Contrast, and fit long menu values on 4:3 panels, closes #99, closes #79 (Brandon T. Kowalski)
+- `56e9c70` Document the solar sensor and the Sunlight shortcuts (Brandon T. Kowalski)
+- `437a9bb` Feed Boktai's solar sensor from the clock on mGBA with Sunlight Up and Down shortcuts, closes #42 (Brandon T. Kowalski)
+
+### Fork changes kept on top (5 commits)
+
+- `b9adfc6` Fit: upstream's Grid, softening only in Fit, Fit decided from a seated cart
+- `35cbb3f` Fit: Actual-style bezels, even grid, and all fork code in fit*.rs
+- `8575439` Make README.md the fork's own and keep it on every upstream sync
+- `c59df76` Take release notes for -gp-custom tags from the upstream version's section
+- `0b46d92` Add new fit mode for gb, gbc and bezels
+
+### Conflicts
+
+- `README.md`: The fork keeps its own README; upstream's changes to it were not taken.
+
+#### Agent notes
+
+##### Sync notes: upstream c19ccbc into the fork
+
+The merge was already clean when this sync started: no file carried conflict markers, and
+`git merge` combined upstream's changes with the fork's `fit*.rs` files and hooks on its own.
+No source file needed a hand edit; the fork's shader `PATCHES` still match upstream's
+`GAME_FRAG`. The notes below cover the files where upstream and the fork changes meet.
+
+##### crates/slot-gfx/src/fit.rs
+
+Upstream rewrote parts of `GAME_FRAG` and `shaders.rs` this sync. The fork's `PATCHES` anchor
+after `varying vec2 v_uv;` and its `soft_texel`/`u_soft` softening still apply to upstream's new
+text, and `fit::tests::the_fit_patches_apply_to_upstreams_game_shader` passes, so no change was
+needed. `Soft` and `game_frag` are untouched otherwise.
+
+##### crates/slot-gfx/src/pipeline.rs
+
+Upstream did not change this file this sync. The fork's `GamePass.soft` field, its
+`Soft::new(prog)`, the `game_frag(GAME_FRAG)` wrap and the `upload(tex == self.game)` call are
+kept exactly as the fork wrote them. Nothing upstream required adapting.
+
+##### crates/slot-gfx/src/fbo.rs
+
+Upstream added saturation and contrast to `Compositor`. The fork's `set_soft_picture(on)` calls
+`self.game.soft.set(on)` before `set_game_source_rect`; both sets of additions now live side by
+side in the struct, its `new()`, and the setters. They do not touch the same lines.
+
+##### crates/slot-gfx/tests/pipeline.rs
+
+Upstream expanded this test file heavily. The fork had added `#![cfg(target_os = "macos")]` at the
+top (these are headless-GL tests); that one line is re-added above upstream's new contents, which
+are taken exactly as upstream wrote them.
+
+##### crates/slot/src/fit.rs
+
+The fork's Fit mode: the `bigger()`/`smaller()` stepping, the crop (`source_rect`), the fitted
+checks (`fits_picture`/`softens_picture`), the bezel cache key (`bezel_key`) and `game_bezel`.
+Upstream's new `BezelPick`/scale work does not add a pick that fits, so `game_bezel`'s rule (only
+`Default` shows in Fit, everything else hidden) still holds unchanged.
+
+##### crates/slot/src/app.rs
+
+Upstream added a large amount: the guide, sunlight, saturation/contrast, game reset, and bezel
+scale handling. The fork's hooks are just `picture_mode()` (a getter for the private `platform`
+and `video_mode`) and the L1/R1 bindings stepping through `bigger()`/`smaller()`. Git merged both
+cleanly; upstream's code is kept as upstream wrote it everywhere else.
+
+##### crates/slot/src/frontend.rs
+
+Upstream reworked `sync_game_bezel` (adding `set_bezel_column`) and `compose` (`picture_on_top`,
+guide sync). The fork's `BezelSync.image` gains its `bool` (fitted), `sync_game_bezel` calls
+`fit::bezel_key`/`fit::game_bezel` first, and `compose` calls `set_soft_picture`. Both sides of
+each area are present and read together.
+
+##### crates/slot/src/video_mode.rs
+
+Upstream did not change this file this sync. The fork's `Fit` variant between `Actual` and
+`Stretch`, the `"fit"` arms in `as_str`/`parse`, and the `(VideoMode::Fit, _, _)` arm in
+`picture_for` are kept as they were.
+
+##### crates/slot/src/lib.rs, crates/slot-ui/src/lib.rs, crates/slot-gfx/src/lib.rs
+
+Upstream added its own modules (guide, grade exports, etc.). The fork's single hooks
+(`pub mod fit;`, `mod fit_bezel;` plus its re-export, `mod fit;`) are re-added among upstream's
+declarations, which are otherwise untouched.
+
+##### crates/slot/tests/app.rs
+
+Upstream changed some test expectations (the new Shimmerless shader). The fork removes upstream's
+two L1/R1 mode tests and the `GB_WINDOW` constant they used, since the fork's versions live in
+`fit_app.rs`. Upstream's remaining edits are kept exactly.
+
+##### crates/slot-gfx/src/shaders.rs
+
+No fork change lives here: the fork patches upstream's shader text at program-build time from
+`fit.rs`. Upstream's new shader text is taken verbatim.
+
+##### .gitignore and site docs
+
+`.gitignore` keeps upstream's file with the fork's two appended lines (`/slot-v*/` and
+`/slot-v*-h700.zip`). The three site docs take upstream's markup with the fork's one-line L1/R1
+wording re-applied. `.github/workflows/release.yml` is left as the workflow set it.
+
+##### Checks
+
+- `python3 .github/sync/sync_upstream.py fork-fmt` — passed (fork's `fit*.rs` unchanged).
+- `python3 .github/sync/sync_upstream.py fork-clippy` — passed; no compile errors, no lints in the
+  fork's files (6 warnings in upstream's own code).
+- `python3 .github/sync/sync_upstream.py fork-clippy device` — passed the same way.
+- `cargo build --profile device --target-dir target-device -p slot --no-default-features --features device` — passed.
+- `python3 .github/sync/sync_upstream.py fork-tests` — every Fit test passed; the three macOS-only
+  render tests are skipped on Linux.
+- `cargo test -p slot --lib --tests` — passed.
+- `cargo test -p slot-gfx --lib --tests` — passed.
+- `cargo test -p slot-ui --lib --tests` — one failure, **not the fork's**: upstream's own
+  `toast::tests::every_toast_is_set_at_full_size` in `crates/slot-ui/src/toast.rs` (a file the fork
+  never touches, byte-for-byte upstream c19ccbc) asserts the new `NeedsMgba` ("Please switch to
+  mGBA") toast is set at full size, but it shrinks to 15 px in a 240 px box. This fails on upstream
+  c19ccbc on its own; left as upstream's to fix.
+- `cargo test --workspace --no-fail-fast --lib --bins --tests` (advisory) — the same single upstream
+  failure; everything else passed.
+
+### Checks
+
+| Check | Result |
+|---|---|
+| `sync_upstream.py fork-fmt --check`: rustfmt on the fork's own files | ✅ success |
+| `sync_upstream.py fork-clippy`: builds everything, lints the fork's own files | ✅ success |
+| `sync_upstream.py fork-clippy device`: the same for the device build | ✅ success |
+| `cargo build --profile device -p slot --no-default-features --features device` | ✅ success |
+| `sync_upstream.py fork-tests`: the fork's Fit tests (FORK-NOTES.md section 4) | ✅ success |
+| `cargo test --workspace --no-fail-fast --lib --bins --tests` (advisory: some tests need cores the runner lacks) | ⚠️ failure |
+
 ## 2026-10-29 11:38 UTC · upstream `34cd2ff` → `729c61d`
 
 Pull request: https://github.com/Maxcimkj/slot-gb-custom/pull/13
