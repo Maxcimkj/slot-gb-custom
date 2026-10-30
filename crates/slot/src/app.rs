@@ -2078,6 +2078,10 @@ impl App {
         }
     }
 
+    pub fn picture_mode(&self) -> (Platform, VideoMode) {
+        (self.platform, self.video_mode)
+    }
+
     fn slot_owns_the_shoulders(&self) -> bool {
         matches!(self.phase, Phase::Playing { .. }) && self.platform.hardware() != Platform::Gba
     }
@@ -2967,12 +2971,12 @@ impl App {
                 Action::GbaDown(Btn::L1)
                     if self.slot_owns_the_shoulders() && !self.bound_to_game(Btn::L1) =>
                 {
-                    self.set_picture(VideoMode::Stretch)
+                    self.set_picture(self.video_mode.bigger())
                 }
                 Action::GbaDown(Btn::R1)
                     if self.slot_owns_the_shoulders() && !self.bound_to_game(Btn::R1) =>
                 {
-                    self.set_picture(VideoMode::Actual)
+                    self.set_picture(self.video_mode.smaller())
                 }
                 Action::Eject => self.eject(),
                 Action::GameMenu => self.game_menu_shortcut(),

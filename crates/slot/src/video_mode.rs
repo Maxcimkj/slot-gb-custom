@@ -9,6 +9,7 @@ pub const VIDEO_MODE_FILE: &str = "Config/video_mode.txt";
 pub enum VideoMode {
     #[default]
     Actual,
+    Fit,
     Stretch,
 }
 
@@ -16,6 +17,7 @@ impl VideoMode {
     pub fn as_str(self) -> &'static str {
         match self {
             VideoMode::Actual => "actual",
+            VideoMode::Fit => "fit",
             VideoMode::Stretch => "stretch",
         }
     }
@@ -23,6 +25,7 @@ impl VideoMode {
     pub fn parse(s: &str) -> Option<VideoMode> {
         match s.trim().to_ascii_lowercase().as_str() {
             "actual" => Some(VideoMode::Actual),
+            "fit" => Some(VideoMode::Fit),
             "stretch" => Some(VideoMode::Stretch),
             _ => None,
         }
@@ -61,6 +64,10 @@ pub fn picture_for(
         return (sizing, WHOLE_TEXTURE);
     }
     match (mode, scale, stretch) {
+        (VideoMode::Fit, _, _) => (
+            Sizing::Band,
+            crate::fit::source_rect(platform, mode).unwrap_or(WHOLE_TEXTURE),
+        ),
         (VideoMode::Actual, Scale::Integer, _) => (Sizing::Integer, crop),
         (VideoMode::Actual, Scale::Fit, _) => (Sizing::Fit, crop),
         (VideoMode::Actual, _, _) => (Sizing::Band, WHOLE_TEXTURE),

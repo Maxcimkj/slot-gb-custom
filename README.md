@@ -5,8 +5,8 @@
 <a href="LICENSE"><img src="https://img.shields.io/github/license/BrandonKowalski/slot?style=for-the-badge&labelColor=242429&color=4d4d57" height="36" alt="License"></a>
 <a href="https://github.com/BrandonKowalski/slot/stargazers"><img src="https://img.shields.io/github/stars/BrandonKowalski/slot?style=for-the-badge&labelColor=242429&color=4d4d57" height="36" alt="Stars"></a>
 <a href="https://github.com/BrandonKowalski/slot/releases"><img src="https://img.shields.io/github/downloads/BrandonKowalski/slot/total?style=for-the-badge&labelColor=242429&color=4d4d57" height="36" alt="Downloads"></a>
-<a href="https://slot-cfw.fyi"><img src="https://img.shields.io/badge/Guide-slot--cfw.fyi-4d4d57?style=for-the-badge&labelColor=242429" height="36" alt="Docs"></a>
-<a href="https://discord.gg/NYRWsSuPUu"><img src="https://img.shields.io/badge/Discord-4d4d57?style=for-the-badge&labelColor=242429&logo=discord&logoColor=white" height="36" alt="Discord"></a>
+<a href="https://slot-cfw.fyi"><img src="https://img.shields.io/badge/Guide-slot--cfw.fyi-4d4d57?style=for-the-badge&labelColor=242429" height="36" alt="Guide"></a>
+<a href="CHANGELOG.md"><img src="https://img.shields.io/badge/Changelog-4d4d57?style=for-the-badge&labelColor=242429" height="36" alt="Changelog"></a>
 
 </div>
 
@@ -22,6 +22,8 @@ Has support for GBA, GBC, and GB titles only.
 > ROMs must be unzipped. slot does not read `.zip` or `.7z` files.
 
 A full user guide can be found at [slot-cfw.fyi](https://slot-cfw.fyi).
+
+Release notes can be found in the [changelog](CHANGELOG.md).
 
 ---
 
@@ -55,38 +57,85 @@ please [open an issue on GitHub](https://github.com/BrandonKowalski/slot/issues)
 
 ---
 
-# Discord Community
+# What does this fork bring?
 
-slot has a [Discord server](https://discord.gg/NYRWsSuPUu) for questions, sharing setups, and talking about the project.
+This is [slot-gb-custom](https://github.com/Maxcimkj/slot-gb-custom), a fork of
+[slot](https://github.com/BrandonKowalski/slot) with one addition: a **Fit** picture mode for
+Game Boy and Game Boy Color games.
 
-It is open to everyone in the slot universe. That includes folks running or building forks of slot.
+## Fit mode for GB and GBC
 
-There is no reason for this community to be fragmented so long as we are having fun!
+slot shows GB and GBC games in two modes: **Actual** (exact 3x, with the bezel) and **Stretch**
+(full width, no bezel).
 
----
+> [!IMPORTANT]
+> **The fork adds Fit between them.** Fit fills the whole screen height and keeps the Game Boy's
+> own 10:9 shape, so the picture is about 533x480 with a bar on each side.
 
-# AI Disclosure
+- **L1** steps bigger: Actual → Fit → Stretch.
+- **R1** steps smaller: Stretch → Fit → Actual.
+- The mode is saved per game, like slot's other picture modes.
+- The side bars get a Fit version of the built-in Game Boy and Game Boy Color bezels.
+- Fit is softened with a sharp-bilinear filter. At 3.33x, plain nearest-neighbour scaling makes
+  rows alternate between 3 and 4 pixels tall, which shows as shimmer when the game scrolls.
+- Every screen effect works in Fit as in slot's other modes. The Grid effect draws a line on every
+  game pixel's edge, just as in Stretch, so the pixels stay visible.
+- Everything else is slot as it is: Actual, Stretch, GBA games (which have no Fit) and screenshots
+  in the album look and behave exactly as in slot.
 
-The Rust frontend, and the SVGs on [slot-cfw.fyi](https://slot-cfw.fyi), were put together by Claude.
-I reviewed everything that was produced. All documentation is 100% free-range, meatbag prose.
+### Fit with bezels
 
-My goal with this project was to recreate the feeling of playing my GBA SP in the back seat as a kid,
-but with a few modern creature comforts.
+The side bars hold Fit versions of the built-in bezels: Game Boy (left) and Game Boy Color
+(right). They use the same grey body, black screen frame and inner shadow on the picture's edge
+as the Actual bezels, so the full-height picture looks set in the same screen. The lamp and its
+label sit at the same height as on the Actual bezel; the console's name runs up the right bar.
 
-Nothing about this project is exciting or groundbreaking from a technological perspective, and as a
-result, I delegated the glue code. mGBA and gpSP have been around forever and are the true stars of
-this show. The incredible skeuomorphic art is the work of [Markus](https://github.com/MarkusMaribu), an
-artist who saw the bare-bones version and offered to dress it up.
+Bezels from the card (`Bezels/GB`, `Bezels/GBC`) are drawn for the Actual picture and would
+cover a fitted one, so Fit hides them; they show again in Actual.
 
-I understand if my use of AI is a dealbreaker for you. Just know it's the least interesting part of
-what's here.
+<p align="center">
+<img src=".github/resources/fork/fit-gb.png" width="48%" alt="Fit mode on a Game Boy game, with the Fit bezel's battery lamp and GAME BOY label in the side bars">
+<img src=".github/resources/fork/fit-gbc.png" width="48%" alt="Fit mode on a Game Boy Color game, with the Fit bezel's power lamp and GAME BOY COLOR label in the side bars">
+</p>
 
-Figured I should share the end result of all the wasted water. ✌🏻
+### Fit softened
 
----
+In each picture, the left side is hard pixels at 3.33x and the right side is the softened Fit
+picture: every row ends up the same height.
 
-# Spread Joy!
+<p align="center">
+<img src=".github/resources/fork/fit-softening.png" width="96.5%" alt="Left: hard pixels at 3.33x with uneven rows. Right: the softened Fit picture with even rows">
+</p>
 
-I've spent a lot of time building slot.
+<p align="center">
+<img src=".github/resources/fork/fit-softening-zoom.png" width="60%" alt="Close-up of the same comparison: uneven rows on the left, even rows on the right">
+</p>
 
-If you enjoy using it and feel inclined to pay it forward, go do something nice for someone! ❤️
+### Screen sizes
+
+Fit is designed for 3:2 panels such as the RG SP (720x480), where the side bars are about 93 px
+wide. On 4:3 panels it still works, but thin bars stay at the top and bottom.
+
+## Always on the newest slot
+
+The fork keeps up with upstream on its own. Once a day, a workflow merges any new slot changes
+into the fork, re-applies Fit on top, runs the build and the fork's tests, and publishes a new
+fork release, so the fork stays on the newest slot version.
+
+To keep those merges easy, all of Fit lives in the fork's own `fit*.rs` files. slot's files stay
+exactly as slot wrote them, apart from a few one-line hooks into Fit, so new slot versions merge
+in without touching the fork's code. [`FORK-NOTES.md`](FORK-NOTES.md) lists every hook.
+
+Fork releases are tagged `v<slot version>-gp-custom.<n>`, for example `v1.9.0-gp-custom.1` is
+slot 1.9.0 plus Fit. Their release notes are slot's.
+
+> [!IMPORTANT]
+> **Download the latest fork release from the
+> [releases page](https://github.com/Maxcimkj/slot-gb-custom/releases/latest).** Install it the
+> same way as slot.
+
+## Full slot documentation
+
+For everything else (installation, controls, cores, bezels, link play, settings), see the
+[slot README](https://github.com/BrandonKowalski/slot/blob/main/README.md) and the
+user guide at [slot-cfw.fyi](https://slot-cfw.fyi).

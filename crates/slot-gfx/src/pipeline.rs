@@ -26,6 +26,7 @@ pub struct GamePass {
     origin: [f32; 2],
     u_pic: gl::types::GLint,
     pic: [f32; 4],
+    pub(crate) soft: crate::fit::Soft,
     paper: gl::types::GLuint,
     paper_size: f32,
     effect: ScreenEffect,
@@ -39,7 +40,7 @@ pub struct GamePass {
 
 impl GamePass {
     pub fn new() -> Result<Self, GfxError> {
-        let prog = crate::shaders::program(RECT_VERT, GAME_FRAG)?;
+        let prog = crate::shaders::program(RECT_VERT, &crate::fit::game_frag(GAME_FRAG))?;
         let game = crate::gl::texture(SRC_W, SRC_H, gl::NEAREST, gl::CLAMP_TO_EDGE, gl::BGRA, None);
         let paper = crate::gl::texture(
             1,
@@ -87,6 +88,7 @@ impl GamePass {
             origin: [0.0, 0.0],
             u_pic,
             pic: WHOLE_TEXTURE,
+            soft: crate::fit::Soft::new(prog),
             paper,
             paper_size: 1.0,
             effect: ScreenEffect::Lcd3x,
@@ -210,6 +212,7 @@ impl GamePass {
             gl::Uniform4f(self.u_uv, src[0], src[1], src[2], src[3]);
             gl::Uniform1f(self.u_bright, bright);
             gl::Uniform1f(self.u_mode, self.effect.mode());
+            self.soft.upload(tex == self.game);
             gl::Uniform1f(self.u_paper_size, self.paper_size);
             gl::Uniform2f(self.u_fbo, self.fbo_scale[0], self.fbo_scale[1]);
             gl::Uniform2f(self.u_origin, self.origin[0], self.origin[1]);
