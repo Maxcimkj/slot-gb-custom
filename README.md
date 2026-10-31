@@ -118,7 +118,7 @@ wide. On 4:3 panels it still works, but thin bars stay at the top and bottom.
 
 ## Always on the newest slot
 
-The fork keeps up with upstream on its own. Once a day, a workflow merges any new slot changes
+The fork keeps up with upstream on its own. Once a week, a workflow merges any new slot changes
 into the fork, re-applies Fit on top, runs the build and the fork's tests, and publishes a new
 fork release, so the fork stays on the newest slot version.
 
