@@ -2,6 +2,118 @@
 
 One record per upstream sync, newest first. Written by `.github/workflows/sync-upstream.yml`; see `FORK-NOTES.md` for how the fork is kept.
 
+## 2026-10-31 11:08 UTC · upstream `c19ccbc` → `ab518c6`
+
+Pull request: https://github.com/Maxcimkj/slot-gb-custom/pull/15
+Run: https://github.com/Maxcimkj/slot-gb-custom/actions/runs/41194719105
+
+### Upstream changes (3 commits)
+
+- `ab518c6` Remove the quick menu centred legend fallback (Brandon T. Kowalski)
+- `4a151fe` Plug the slot and move the core picker legends to the footer (Brandon T. Kowalski)
+- `87788ea` Add OTA updates for slot and BaseOS (Brandon T. Kowalski)
+
+### Fork changes kept on top (5 commits)
+
+- `b9adfc6` Fit: upstream's Grid, softening only in Fit, Fit decided from a seated cart
+- `35cbb3f` Fit: Actual-style bezels, even grid, and all fork code in fit*.rs
+- `8575439` Make README.md the fork's own and keep it on every upstream sync
+- `c59df76` Take release notes for -gp-custom tags from the upstream version's section
+- `0b46d92` Add new fit mode for gb, gbc and bezels
+
+### Conflicts
+
+None. Upstream merged cleanly into the fork.
+
+#### Agent notes
+
+##### Sync notes: upstream `ab518c6` into `main`
+
+The merge of `main` (`0bdc7f6`) into `sync/upstream-ab518c6` had no conflict markers and no
+conflicted paths. Upstream's three new commits (`87788ea` OTA updates, `4a151fe` plug the slot and
+move the core picker legends to the footer, `ab518c6` remove the quick menu centred legend
+fallback) landed entirely away from the fork's hooks, so nothing needed a manual edit. Every fork
+`fit*.rs` file is byte for byte the fork's; the upstream files below only carry the hooks listed in
+`FORK-NOTES.md` section 3, which are intact and still compile against upstream's new code.
+
+##### crates/slot/src/app.rs
+
+Upstream reworked this file heavily for OTA updates and the new core picker/footer legends (856
+lines). None of it overlaps the fork's small hooks: the `picture_mode()` getter and the L1/R1 arms
+that now call `self.video_mode.bigger()`/`smaller()` instead of `set_picture(VideoMode::Stretch)`/
+`Actual`. The merge kept upstream's version everywhere else and re-applied those two lines, which
+is exactly the fork's change.
+
+##### crates/slot/src/frontend.rs
+
+Upstream changed drawing and legend code (169 lines). The fork's hooks are re-applied on top: the
+extra `bool` (fitted) on `BezelSync.image`, the `fit::bezel_key` call that keeps the cached bezel,
+the first `match` arm that draws `fit::game_bezel` for a fitted picture, and the
+`set_soft_picture(self.session.app().softens_picture())` call in `compose()`.
+
+##### crates/slot/src/video_mode.rs
+
+Upstream did not change this file since `c19ccbc`; it already had the `picture_for` function that
+the fork hooks into. The fork's `Fit` variant, its `"fit"` arms in `as_str`/`parse`, and the
+`(VideoMode::Fit, _, _)` arm calling `crate::fit::source_rect(platform, mode).unwrap_or(WHOLE_TEXTURE)`
+are kept unchanged.
+
+##### crates/slot/src/lib.rs, crates/slot-ui/src/lib.rs, crates/slot-gfx/src/lib.rs
+
+Upstream added `pub mod update;` (slot) and reworked its `pub use` list (slot-ui); slot-gfx was
+untouched. The fork's module declarations (`pub mod fit;`, `mod fit_bezel;` plus its re-export,
+`mod fit;`) are re-added among upstream's, which are otherwise kept exactly.
+
+##### crates/slot-gfx/src/pipeline.rs, crates/slot-gfx/src/fbo.rs
+
+Upstream built the game program from `GAME_FRAG`; the fork wraps it with `fit::game_frag(GAME_FRAG)`,
+adds the `soft: crate::fit::Soft` field with `Soft::new(prog)`, and uploads it via
+`self.soft.upload(tex == self.game)`. `fbo.rs` gains `set_soft_picture(on)` over `self.game.soft.set`.
+Both hooks still fit upstream's `GamePass`/`Compositor` unchanged.
+
+##### crates/slot/tests/app.rs
+
+Upstream edited some expectations in this upstream test file. The fork's only change here is the
+removal of upstream's two L1/R1 mode tests and the `GB_WINDOW` constant only they used, because the
+fork's versions live in `fit_app.rs`; those removals are kept.
+
+##### .gitignore, site/docs/guide/controls.md, site/docs/guide/screen.md, site/docs/tour.md
+
+`.gitignore` keeps upstream's file with the fork's two appended lines (`/slot-v*/`,
+`/slot-v*-h700.zip`). The three site docs keep upstream's markup with the fork's one-line L1/R1
+wording (L1 goes to full height first, then stretched; R1 steps back; bezels hidden only while the
+picture fills the screen).
+
+##### Checks
+
+- `python3 .github/sync/sync_upstream.py fork-fmt` — passed; formatted the 9 fork `fit*.rs` files
+  with no change.
+- `python3 .github/sync/sync_upstream.py fork-clippy` — passed; no compile errors and no lints in
+  the fork's files (11 warnings in upstream's own code).
+- `python3 .github/sync/sync_upstream.py fork-clippy device` — passed the same way (3 upstream
+  warnings).
+- `cargo build --profile device --target-dir target-device -p slot --no-default-features --features device` — passed.
+- `python3 .github/sync/sync_upstream.py fork-tests` — every Fit test passed by name; the three
+  macOS-only render tests (`fit_pipeline`, `fit_colour`, `fit_render_bezel`) are skipped on Linux.
+- `cargo test -p slot --lib --tests` — passed.
+- `cargo test -p slot-gfx -p slot-ui --lib --tests` — slot-gfx passed. slot-ui has one failure,
+  **not the fork's**: upstream's own `toast::tests::every_toast_is_set_at_full_size` in
+  `crates/slot-ui/src/toast.rs`, a file the fork never touches and upstream did not change since
+  `c19ccbc`, asserts the `NeedsMgba` ("Please switch to mGBA") toast is set at full size but it
+  shrinks to 15 px in a 240 px box. The previous sync's `rebase-log.md` records the same failure on
+  upstream `c19ccbc` alone, so it is upstream's to fix and was left as is.
+
+### Checks
+
+| Check | Result |
+|---|---|
+| `sync_upstream.py fork-fmt --check`: rustfmt on the fork's own files | ✅ success |
+| `sync_upstream.py fork-clippy`: builds everything, lints the fork's own files | ✅ success |
+| `sync_upstream.py fork-clippy device`: the same for the device build | ✅ success |
+| `cargo build --profile device -p slot --no-default-features --features device` | ✅ success |
+| `sync_upstream.py fork-tests`: the fork's Fit tests (FORK-NOTES.md section 4) | ✅ success |
+| `cargo test --workspace --no-fail-fast --lib --bins --tests` (advisory: some tests need cores the runner lacks) | ⚠️ failure |
+
 ## 2026-10-30 11:35 UTC · upstream `729c61d` → `c19ccbc`
 
 Pull request: https://github.com/Maxcimkj/slot-gb-custom/pull/14

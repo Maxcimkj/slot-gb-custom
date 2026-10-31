@@ -1,9 +1,7 @@
 use crate::bitmaps::{button_legend, ButtonLegend};
 use crate::draw::{Canvas, Draw, TexId, OUT_H, OUT_W};
 use crate::icon::{Icon, WARNING_INK};
-use crate::plate::{
-    blit, centred_hints, word_face, word_ink, UndoFace, CAP_GAP, HINT_EDGE, HINT_H, LEGEND_GAP,
-};
+use crate::plate::{blit, word_face, word_ink, UndoFace, CAP_GAP, HINT_EDGE};
 use crate::power_menu::{MENU_H, MENU_INK, MENU_PAD, MENU_PX};
 use crate::slot_chrome::{opening, MOUTH_H};
 use crate::text;
@@ -1124,16 +1122,17 @@ pub fn quick_description_face(lines: &[&str]) -> UndoFace {
 }
 
 /// Cancel, Swap, Choose. Swap keeps the button before the word, the way the old arrows did.
-pub fn core_button_legends() -> Vec<UndoFace> {
+pub fn core_button_legends(ink: [u8; 3]) -> Vec<UndoFace> {
+    let hint = Some(ink);
     vec![
-        with_hint(button_face(ButtonLegend::B), "Cancel", None, true),
+        with_hint(button_face(ButtonLegend::B), "Cancel", hint, true),
         with_hint(
             button_pair(ButtonLegend::Left, ButtonLegend::Right),
             "Swap",
-            None,
+            hint,
             true,
         ),
-        with_hint(button_face(ButtonLegend::A), "Choose", None, false),
+        with_hint(button_face(ButtonLegend::A), "Choose", hint, false),
     ]
 }
 
@@ -1175,6 +1174,17 @@ pub fn clock_legend_faces(ink: [u8; 3]) -> [UndoFace; 6] {
 
 pub fn repair_legends(ink: [u8; 3]) -> [UndoFace; 2] {
     prompt_legends(ink, "Not now", "Repair")
+}
+
+pub fn update_legends(ink: [u8; 3], light_ink: [u8; 3]) -> [UndoFace; 5] {
+    let [cancel, install] = prompt_legends(ink, "Cancel", "Install");
+    [
+        with_hint(button_face(ButtonLegend::X), "OTA", Some(ink), false),
+        with_hint(button_face(ButtonLegend::X), "OTA", Some(light_ink), false),
+        cancel,
+        install,
+        with_hint(button_face(ButtonLegend::B), "Back", Some(ink), true),
+    ]
 }
 
 pub fn delete_legends(ink: [u8; 3]) -> [UndoFace; 2] {
@@ -1342,8 +1352,6 @@ pub struct QuickMenu<'a> {
     pub bound: Option<&'a [Option<FacePair>]>,
     pub description: Option<(TexId, u32, u32)>,
     pub over_game: bool,
-    /// The carousel footer carries the legends, so the centred pair is not drawn.
-    pub footer_legends: bool,
     /// Where the sliding footer starts. The scrim stops there so it does not darken the strip.
     pub footer_top: f32,
     pub canvas: Canvas,
@@ -1452,18 +1460,6 @@ impl QuickMenu<'_> {
         if let Some((tex, w, h)) = self.description {
             let y = OUT_H as f32 - MOUTH_H - h as f32 - DESCRIPTION_GAP;
             push(out, tex, self.canvas.centred(w as f32), y, w, h);
-        }
-        if self.over_game || self.footer_legends {
-            return;
-        }
-        let [back, change, open, resume, ..] = faces.legend;
-        let back = match self.row.page() == QuickRow::PLAY {
-            true => resume,
-            false => back,
-        };
-        let other = if self.row.opens() { open } else { change };
-        for (tex, w, x) in centred_hints(self.canvas, &[back, other], LEGEND_GAP) {
-            push(out, tex, x, LEGEND_Y, w, HINT_H);
         }
     }
 }

@@ -30,6 +30,9 @@ use crate::link_screen::LinkSprites;
 use crate::link_start::{link_port, LinkFail, LinkProgress, LinkStarter, LinkStep};
 use crate::loading_mark::LoadingMark;
 use crate::persist::{self, Snapshot};
+use crate::update::{
+    no_update_jobs, Kind, Release, UpdateEvent, UpdateFail, UpdateJob, UpdateJobs,
+};
 use crate::video_mode::{self, VideoMode};
 use slot_store::{
     read_carousel, read_controls, read_shortcuts, write_carousel, write_controls, write_shortcuts,
@@ -55,7 +58,7 @@ pub const EJECT_S: f32 = SEATED_AT;
 
 const EJECT_HOLD_S: f32 = 0.35;
 
-const POWER_ON_S: f32 = 0.22;
+pub const POWER_ON_S: f32 = 0.22;
 
 const POWER_OFF_S: f32 = 0.16;
 
@@ -100,8 +103,6 @@ const SLOT_NAME_HOLD_MS: Millis = 1200;
 const SLOT_NAME_OUT_MS: Millis = 800;
 const SLOT_NAME_ALPHA: f32 = 1.0;
 const CORE_PICKER_DIM: f32 = 0.25 / (1.0 - CORE_PICKER_RECEDE);
-const CORE_LEGEND_Y: f32 = OUT_H as f32 - MOUTH_H * 2.0;
-const CORE_LEGEND_GAP: f32 = 24.0;
 const LINK_TEXT_Y: f32 = 44.0;
 const LINK_LEGEND_Y: f32 = OUT_H as f32 - MOUTH_H;
 pub const LINK_SCRIM: [f32; 4] = [0.0, 0.0, 0.0, 0.5];
@@ -334,6 +335,79 @@ impl Rack {
 const RECENTS_AT: usize = 0;
 const FAVORITES_AT: usize = 1;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum UpdateState {
+    Checking,
+    Available(Vec<Release>, usize),
+    Battery(Release),
+    UpToDate,
+    Downloading(Release, u64),
+    Closing(Release),
+    Failed(UpdateFail),
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct UpdateCart {
+    pub cart: TexId,
+    pub interior: TexId,
+    pub face: TexId,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct UpdateScene {
+    pub carts: [UpdateCart; 2],
+    pub chip: TexId,
+    pub board: TexId,
+    pub logo: (TexId, u32, u32),
+    pub logo_ground: [f32; 4],
+}
+
+pub fn update_cart() -> Cart {
+    shelled([0x7b, 0x3f, 0xe4], slot_store::ShellFinish::Clear)
+}
+
+pub fn baseos_cart() -> Cart {
+    shelled([0x1b, 0x1b, 0x1e], slot_store::ShellFinish::Solid)
+}
+
+pub fn cart_for(kind: Kind) -> Cart {
+    match kind {
+        Kind::Slot => update_cart(),
+        Kind::BaseOs => baseos_cart(),
+    }
+}
+
+fn shelled(colour: [u8; 3], finish: slot_store::ShellFinish) -> Cart {
+    Cart {
+        platform: Platform::Gba,
+        stem: String::new(),
+        rom: PathBuf::new(),
+        label: None,
+        title: String::new(),
+        code: String::new(),
+        shell: Some(slot_store::ShellChoice {
+            outline: slot_store::Outline::Auto,
+            colour,
+            finish,
+        }),
+    }
+}
+
+const UPDATE_DROP_MS: Millis = 500;
+const UPDATE_BOB_MS: f32 = 2800.0;
+const UPDATE_BOB_PX: f32 = 7.0;
+const UPDATE_SWAY: f32 = 0.8 * std::f32::consts::PI / 180.0;
+const UPDATE_OVERSHOOT: f32 = 1.2;
+const UPDATE_CHECK_Y: f32 = 170.0;
+const UPDATE_PAIR_SCALE: f32 = 0.8;
+const UPDATE_PAIR_GAP: f32 = 24.0;
+const UPDATE_TITLE_Y: f32 = 30.0;
+const TARNISH: [f32; 3] = [0.24, 0.22, 0.16];
+const TARNISH_ALPHA: f32 = 0.68;
+const UPDATE_HOLD_MS: Millis = 300;
+const UPDATE_SWAP_PAUSE_MS: Millis = 1000;
+const UPDATE_BLINK_MS: Millis = 400;
+
 pub struct App {
     phase: Phase,
     shelves: Vec<(Rack, Shelf)>,
@@ -355,7 +429,7 @@ pub struct App {
     core_chip_faces: Vec<TexId>,
     core_blank_chip_face: Option<TexId>,
     core_chip_shadow_face: Option<TexId>,
-    core_legend_faces: Vec<(TexId, u32)>,
+    core_legend_faces: [Vec<(TexId, u32)>; 2],
     game_menu: Option<GameMenu>,
     link_sprites: Option<LinkSprites>,
     link_shot: Option<TexId>,
@@ -373,6 +447,7 @@ pub struct App {
     starting: Option<LinkStarting>,
     link_transport: Option<(u16, Box<dyn LinkChannel>)>,
     restarting: bool,
+    relaunching: bool,
     repairing: bool,
     repair_prompt: bool,
     reset_prompt: Option<QuickRow>,
@@ -468,6 +543,18 @@ pub struct App {
     last_led: Option<LedState>,
     powering_off: bool,
     radio: Box<dyn RadioJobs>,
+    update_jobs: Box<dyn UpdateJobs>,
+    update: Option<UpdateState>,
+    update_busy: bool,
+    update_at: Millis,
+    update_sounded: bool,
+    update_faces: Vec<(TexId, u32, u32)>,
+    update_legends: Option<[(TexId, u32); 5]>,
+    update_scene: Option<UpdateScene>,
+    update_picker: Option<CorePicker>,
+    update_seat_at: Option<Millis>,
+    update_sockets: Vec<TexId>,
+    update_chips: Vec<TexId>,
     state_writer: crate::state_writer::StateWriter,
     shot_writer: crate::shot_writer::ShotWriter,
     shot_wanted: bool,
@@ -539,6 +626,18 @@ impl App {
         let card_writes = state_writer.card_writes();
         App {
             radio: radio_jobs(),
+            update_jobs: no_update_jobs(),
+            update: None,
+            update_busy: false,
+            update_at: 0,
+            update_sounded: false,
+            update_faces: Vec::new(),
+            update_legends: None,
+            update_scene: None,
+            update_picker: None,
+            update_seat_at: None,
+            update_sockets: Vec::new(),
+            update_chips: Vec::new(),
             state_writer,
             shot_writer: crate::shot_writer::ShotWriter::spawn(card_writes.clone()),
             shot_wanted: false,
@@ -576,7 +675,7 @@ impl App {
             core_chip_faces: Vec::new(),
             core_blank_chip_face: None,
             core_chip_shadow_face: None,
-            core_legend_faces: Vec::new(),
+            core_legend_faces: [Vec::new(), Vec::new()],
             game_menu: None,
             link_sprites: None,
             link_shot: None,
@@ -594,6 +693,7 @@ impl App {
             starting: None,
             link_transport: None,
             restarting: false,
+            relaunching: false,
             repairing: false,
             repair_prompt: false,
             reset_prompt: None,
@@ -2691,6 +2791,10 @@ impl App {
         self.restarting
     }
 
+    pub fn relaunching(&self) -> bool {
+        self.relaunching
+    }
+
     pub fn restart(&mut self) {
         self.settle_saves();
         if let Some(power) = &mut self.power {
@@ -2890,6 +2994,9 @@ impl App {
             }
             return;
         }
+        if self.update.is_some() {
+            return self.update_input(action);
+        }
         if self.repair_prompt {
             match action {
                 Action::GbaDown(Btn::A) => self.begin_repair(),
@@ -3012,7 +3119,10 @@ impl App {
                     row: QuickRow::About,
                 }
             }
-            Phase::About if action == Action::GbaDown(Btn::X) => self.begin_restart(),
+            Phase::About if action == Action::Restart => self.begin_restart(),
+            Phase::About if action == Action::GbaDown(Btn::X) && self.update_offered() => {
+                self.check_for_update()
+            }
             Phase::QuickMenu { row } => self.quick_menu_input(row, action),
             _ => {}
         }
@@ -4072,6 +4182,7 @@ impl App {
     }
 
     fn timers(&mut self) {
+        self.take_update_events();
         self.play_hold();
         self.repeat_held_dir();
         self.take_shot_list();
@@ -4412,6 +4523,9 @@ impl App {
             }
             return;
         }
+        if self.update.is_some() {
+            return self.draw_update(out);
+        }
         if self.repair_prompt {
             return self.draw_prompt(&self.repair_faces, out);
         }
@@ -4445,7 +4559,7 @@ impl App {
                     canvas: self.canvas(),
                 }
                 .draw(out);
-                slot_ui::draw_plugged_slot(self.canvas(), self.plugged_face, out);
+                slot_ui::draw_plugged_slot(self.canvas(), self.plugged_face, 1.0, out);
                 self.draw_clock_legends(picker, *from_menu, out);
                 return;
             }
@@ -4465,7 +4579,6 @@ impl App {
                 gbc_bezel: self.quick_bezel_faces[bezel_slot(Platform::Gbc)],
                 bezel: None,
                 over_game: false,
-                footer_legends: true,
                 footer_top: OUT_H as f32,
                 canvas: self.canvas(),
             }
@@ -4512,6 +4625,10 @@ impl App {
                     footer_ink(self.light()),
                     out,
                 );
+                if let Some(picker) = self.core_picker_shown() {
+                    let lift = lift_of(picker.openness(self.now()));
+                    slot_ui::draw_plugged_slot(self.canvas(), self.plugged_face, lift, out);
+                }
             }
             Phase::About => {
                 slot_ui::draw_menu_ground(self.canvas(), self.menu_ground(), out);
@@ -4631,7 +4748,6 @@ impl App {
                 gbc_bezel: None,
                 bezel: self.quick_bezel_faces[bezel_slot(self.playing_platform())],
                 over_game: true,
-                footer_legends: false,
                 footer_top: OUT_H as f32 - MOUTH_H + self.menu_footer_offset(),
                 canvas: self.canvas(),
             }
@@ -4695,7 +4811,7 @@ impl App {
             Phase::Playing { cart } if self.footer > 0.0 => {
                 let row = self.in_game_menu_shown().or(self.footer_row);
                 match row.is_some_and(QuickRow::binds) {
-                    true => slot_ui::draw_plugged_slot(self.canvas(), self.plugged_face, out),
+                    true => slot_ui::draw_plugged_slot(self.canvas(), self.plugged_face, 1.0, out),
                     false => self.draw_seated_mouth(cart, out),
                 }
                 row
@@ -4703,7 +4819,7 @@ impl App {
             // The carousel menu is not a game, so the mouth stays empty, in the
             // same place the shelf already had it.
             Phase::QuickMenu { row } if row.binds() => {
-                slot_ui::draw_plugged_slot(self.canvas(), self.plugged_face, out);
+                slot_ui::draw_plugged_slot(self.canvas(), self.plugged_face, 1.0, out);
                 Some(*row)
             }
             Phase::QuickMenu { row } => {
@@ -4802,12 +4918,15 @@ impl App {
         let Some(faces) = &self.quick_menu_faces else {
             return;
         };
-        let [back, _, _, _, restart, ..] = match self.light() {
+        let [back, ..] = match self.light() {
             true => faces.legend_light,
             false => faces.legend,
         };
         self.draw_side_legend(back, false, LINK_LEGEND_Y, out);
-        self.draw_side_legend(restart, true, LINK_LEGEND_Y, out);
+        if let (true, Some([ota, ota_light, ..])) = (self.update_offered(), self.update_legends) {
+            let ota = if self.light() { ota_light } else { ota };
+            self.draw_side_legend(ota, true, LINK_LEGEND_Y, out);
+        }
     }
 
     fn draw_menu_legends(&self, row: QuickRow, y: f32, out: &mut Vec<Draw>) {
@@ -4823,7 +4942,7 @@ impl App {
                 true => vec![back, clear, set],
                 false => vec![back, reset, clear, set],
             };
-            self.draw_spread_legends(&legends, y, out);
+            self.draw_spread_legends(&legends, y, 1.0, out);
             return;
         }
         let left = match row.page() == QuickRow::PLAY {
@@ -4852,10 +4971,16 @@ impl App {
             (None, false, ClockRow::Zone) => vec![back, open],
             (None, false, ClockRow::Clock) => vec![back, change],
         };
-        self.draw_spread_legends(&legends, LINK_LEGEND_Y, out);
+        self.draw_spread_legends(&legends, LINK_LEGEND_Y, 1.0, out);
     }
 
-    fn draw_spread_legends(&self, legends: &[(TexId, u32)], y: f32, out: &mut Vec<Draw>) {
+    fn draw_spread_legends(
+        &self,
+        legends: &[(TexId, u32)],
+        y: f32,
+        alpha: f32,
+        out: &mut Vec<Draw>,
+    ) {
         let seen = |w: u32| w.saturating_sub(HINT_EDGE) as f32;
         let room = self.canvas().w - 2.0 * LINK_LEGEND_EDGE;
         let gap =
@@ -4868,7 +4993,7 @@ impl App {
                 w: w as f32,
                 h: MOUTH_H,
                 tex,
-                alpha: 1.0,
+                alpha,
             });
             x += seen(w) + gap;
         }
@@ -4984,8 +5109,12 @@ impl App {
         self.core_chip_shadow_face = Some(shadow);
     }
 
-    pub fn set_core_legend_faces(&mut self, faces: Vec<(TexId, u32)>) {
-        self.core_legend_faces = faces;
+    pub fn set_core_legend_faces(
+        &mut self,
+        dark: Vec<(TexId, u32)>,
+        light: Vec<(TexId, u32)>,
+    ) {
+        self.core_legend_faces = [dark, light];
     }
 
     pub fn set_link_menu_faces(&mut self, faces: Vec<(TexId, u32, u32)>) {
@@ -5030,6 +5159,87 @@ impl App {
         self.core_picker.filter(|p| !p.waiting())
     }
 
+    fn draw_lid_shadow(&self, shelf: Placed, progress: f32, out: &mut Vec<Draw>) {
+        let Some(tex) = self.core_chip_shadow_face else {
+            return;
+        };
+        let lift = lift_of(progress);
+        let (lid, _) = lid_from(self.canvas(), shelf, progress);
+        let k = lid.w / lid_at(self.canvas(), 1.0).0.w;
+        let (w, h) = (LID_SHADOW_W * k, LID_SHADOW_H * k);
+        out.push(Draw::Tex {
+            x: lid.x + (lid.w - w) / 2.0,
+            y: lid.y + lid.h + LID_SHADOW_DROP * k - h / 2.0,
+            w,
+            h,
+            tex,
+            alpha: LID_SHADOW_ALPHA * lift,
+        });
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn draw_board_chip(
+        &self,
+        board: Placed,
+        sockets: &[TexId],
+        chip: Chip,
+        faces: &[TexId],
+        blank: Option<TexId>,
+        lift: f32,
+        out: &mut Vec<Draw>,
+    ) {
+        let zoom = board_zoom(board);
+        for (i, tex) in sockets.iter().copied().enumerate() {
+            let (x, y) = on_board(board, SOCKET_U[i], SOCKET_V);
+            out.push(Draw::Tex {
+                x: x.round(),
+                y: y.round(),
+                w: SOCKET_W as f32 * zoom,
+                h: SOCKET_H as f32 * zoom,
+                tex,
+                alpha: 1.0,
+            });
+        }
+        let u = CHIP_U[0] + (CHIP_U[1] - CHIP_U[0]) * chip.across;
+        if chip.lift > 0.0 {
+            if let Some(tex) = self.core_chip_shadow_face {
+                let (cx, cy) = on_board(board, u + 19.0, CHIP_V + 29.4);
+                let (w, h) = (SHADOW_W as f32 * zoom, SHADOW_H as f32 * zoom);
+                out.push(Draw::Tex {
+                    x: cx - w / 2.0,
+                    y: cy - h / 2.0,
+                    w,
+                    h,
+                    tex,
+                    alpha: 0.6 * chip.lift * lift,
+                });
+            }
+        }
+        let face = match chip.seated {
+            Some(core) => faces.get(core.index()).copied(),
+            None => blank,
+        };
+        if let Some(tex) = face {
+            let (x, y) = on_board(board, u, CHIP_V - HOP_LIFT * chip.lift);
+            let body = Placed {
+                x: x + chip.shake,
+                y,
+                w: CHIP_W as f32 * zoom,
+                h: CHIP_H as f32 * zoom,
+            };
+            let at = grown(body, TURN_PAD as f32 * zoom);
+            out.push(Draw::Turned {
+                x: at.x.round(),
+                y: at.y.round(),
+                w: at.w,
+                h: at.h,
+                tex,
+                alpha: 1.0,
+                turn: chip.tip,
+            });
+        }
+    }
+
     fn draw_core_picker(&self, picker: &CorePicker, out: &mut Vec<Draw>) {
         let now = self.now();
         let progress = picker.openness(now);
@@ -5037,7 +5247,6 @@ impl App {
         let (rest, scale) = self.shelf().selected_at(self.canvas());
         let shelf = shelf_cart_at(rest, scale);
         let board = board_from(self.canvas(), shelf, progress);
-        let zoom = board_zoom(board);
         let ready = self.core_faces_ready();
 
         if ready {
@@ -5061,72 +5270,18 @@ impl App {
                     alpha: 1.0,
                 });
             }
-            for (i, tex) in self.core_socket_faces.iter().copied().enumerate() {
-                let (x, y) = on_board(board, SOCKET_U[i], SOCKET_V);
-                out.push(Draw::Tex {
-                    x: x.round(),
-                    y: y.round(),
-                    w: SOCKET_W as f32 * zoom,
-                    h: SOCKET_H as f32 * zoom,
-                    tex,
-                    alpha: 1.0,
-                });
-            }
-
-            let chip = picker.chip(now);
-            let u = CHIP_U[0] + (CHIP_U[1] - CHIP_U[0]) * chip.across;
-            if chip.lift > 0.0 {
-                if let Some(tex) = self.core_chip_shadow_face {
-                    let (cx, cy) = on_board(board, u + 19.0, CHIP_V + 29.4);
-                    let (w, h) = (SHADOW_W as f32 * zoom, SHADOW_H as f32 * zoom);
-                    out.push(Draw::Tex {
-                        x: cx - w / 2.0,
-                        y: cy - h / 2.0,
-                        w,
-                        h,
-                        tex,
-                        alpha: 0.6 * chip.lift * lift,
-                    });
-                }
-            }
-            let face = match chip.seated {
-                Some(core) => self.core_chip_faces.get(core.index()).copied(),
-                None => self.core_blank_chip_face,
-            };
-            if let Some(tex) = face {
-                let (x, y) = on_board(board, u, CHIP_V - HOP_LIFT * chip.lift);
-                let body = Placed {
-                    x: x + chip.shake,
-                    y,
-                    w: CHIP_W as f32 * zoom,
-                    h: CHIP_H as f32 * zoom,
-                };
-                let at = grown(body, TURN_PAD as f32 * zoom);
-                out.push(Draw::Turned {
-                    x: at.x.round(),
-                    y: at.y.round(),
-                    w: at.w,
-                    h: at.h,
-                    tex,
-                    alpha: 1.0,
-                    turn: chip.tip,
-                });
-            }
+            self.draw_board_chip(
+                board,
+                &self.core_socket_faces,
+                picker.chip(now),
+                &self.core_chip_faces,
+                self.core_blank_chip_face,
+                lift,
+                out,
+            );
         }
 
-        if let Some(tex) = self.core_chip_shadow_face {
-            let (lid, _) = lid_from(self.canvas(), shelf, progress);
-            let k = lid.w / lid_at(self.canvas(), 1.0).0.w;
-            let (w, h) = (LID_SHADOW_W * k, LID_SHADOW_H * k);
-            out.push(Draw::Tex {
-                x: lid.x + (lid.w - w) / 2.0,
-                y: lid.y + lid.h + LID_SHADOW_DROP * k - h / 2.0,
-                w,
-                h,
-                tex,
-                alpha: LID_SHADOW_ALPHA * lift,
-            });
-        }
+        self.draw_lid_shadow(shelf, progress, out);
 
         if ready {
             if let Some(tex) = self.core_lid_face {
@@ -5158,27 +5313,9 @@ impl App {
             });
         }
 
-        if let [cancel, swap, choose] = self.core_legend_faces.as_slice() {
-            let seen = |w: u32| w.saturating_sub(HINT_EDGE) as f32;
-            let swap_x = self.canvas().centred(seen(swap.1));
-            for (tex, w, x) in [
-                (
-                    cancel.0,
-                    cancel.1,
-                    swap_x - CORE_LEGEND_GAP - seen(cancel.1),
-                ),
-                (swap.0, swap.1, swap_x),
-                (choose.0, choose.1, swap_x + seen(swap.1) + CORE_LEGEND_GAP),
-            ] {
-                out.push(Draw::Tex {
-                    x: x.round(),
-                    y: CORE_LEGEND_Y,
-                    w: w as f32,
-                    h: MOUTH_H,
-                    tex,
-                    alpha: lift,
-                });
-            }
+        let legends = &self.core_legend_faces[self.light() as usize];
+        if !legends.is_empty() {
+            self.draw_spread_legends(legends, LINK_LEGEND_Y, lift, out);
         }
     }
 
@@ -5431,6 +5568,12 @@ impl App {
         if self.link_active() {
             self.end_link();
         }
+        if !matches!(
+            self.update,
+            Some(UpdateState::Downloading(..) | UpdateState::Closing(_))
+        ) {
+            self.update = None;
+        }
         self.close_game_menu();
         self.core_picker = None;
         self.shot_wanted = false;
@@ -5633,6 +5776,509 @@ impl App {
 
     pub fn set_radio_jobs(&mut self, jobs: Box<dyn RadioJobs>) {
         self.radio = jobs;
+    }
+
+    pub fn set_update_jobs(&mut self, jobs: Box<dyn UpdateJobs>) {
+        self.update_jobs = jobs;
+    }
+
+    pub fn restart_chord(&self) -> bool {
+        matches!(self.phase, Phase::About) && self.update.is_none()
+    }
+
+    pub fn update_offered(&self) -> bool {
+        matches!(self.phase, Phase::About)
+            && !self.update_busy
+            && self.root.as_deref().is_some_and(crate::update::wifi_conf)
+            && !self.link_active()
+    }
+
+    pub fn update_shown(&self) -> bool {
+        self.update.is_some()
+    }
+
+    pub fn update_progress(&self) -> Option<f32> {
+        match self.update.as_ref()? {
+            UpdateState::Downloading(r, got) => {
+                Some((*got as f32 / r.size.max(1) as f32).clamp(0.0, 1.0))
+            }
+            UpdateState::Closing(_) => Some(1.0),
+            _ => None,
+        }
+    }
+
+    fn set_update(&mut self, state: Option<UpdateState>) {
+        self.update = state;
+        self.update_at = self.now();
+    }
+
+    pub fn update_text(&self) -> Option<(String, String)> {
+        let running = crate::build_info::Build::current().version;
+        let retry = "Nothing was changed. Try again later.";
+        let (title, detail) = match self.update.as_ref()? {
+            UpdateState::Checking => ("Checking for updates".into(), String::new()),
+            UpdateState::Available(offers, _) => (
+                match offers.len() {
+                    1 => "An update is available",
+                    _ => "Updates are available",
+                }
+                .into(),
+                String::new(),
+            ),
+            UpdateState::Battery(_) => (
+                "Battery is low".into(),
+                "Plug in before updating BaseOS. A installs anyway.".into(),
+            ),
+            UpdateState::UpToDate => (
+                "slot is up to date".into(),
+                format!("{running} is the latest version."),
+            ),
+            UpdateState::Downloading(..) | UpdateState::Closing(_) => return None,
+            UpdateState::Failed(f) => {
+                let (title, detail) = match f {
+                    UpdateFail::NoWifi => (
+                        "Could not join Wi-Fi",
+                        "Check the networks in Config/wifi.conf.",
+                    ),
+                    UpdateFail::Offline => (
+                        "Could not connect",
+                        "Check the network has internet access.",
+                    ),
+                    UpdateFail::Clock => (
+                        "Could not check for updates",
+                        "Set the date and time, then try again.",
+                    ),
+                    UpdateFail::Download => ("Download failed", retry),
+                    UpdateFail::Checksum => ("The download was damaged", retry),
+                    UpdateFail::Bad => ("The update could not be read", retry),
+                    UpdateFail::Space => (
+                        "Not enough space on the card",
+                        "Free some space, then try again.",
+                    ),
+                    UpdateFail::Rejected(why) => ("BaseOS refused the update", why.as_str()),
+                };
+                (title.into(), detail.into())
+            }
+        };
+        Some((title, detail))
+    }
+
+    fn check_for_update(&mut self) {
+        self.update_jobs.ask(UpdateJob::Check);
+        self.update_busy = true;
+        self.set_update(Some(UpdateState::Checking));
+    }
+
+    fn update_input(&mut self, action: Action) {
+        match (&mut self.update, action) {
+            (Some(UpdateState::Available(offers, i)), Action::GbaDown(Btn::Left)) => {
+                *i = i.saturating_sub(1).min(offers.len() - 1)
+            }
+            (Some(UpdateState::Available(offers, i)), Action::GbaDown(Btn::Right)) => {
+                *i = (*i + 1).min(offers.len() - 1)
+            }
+            (Some(UpdateState::Available(offers, i)), Action::GbaDown(Btn::A)) => {
+                let r = offers[*i].clone();
+                match r.kind == Kind::BaseOs && !self.charged_to_repair() {
+                    true => self.set_update(Some(UpdateState::Battery(r))),
+                    false => self.install_update(r),
+                }
+            }
+            (Some(UpdateState::Battery(r)), Action::GbaDown(Btn::A)) => {
+                let r = r.clone();
+                self.install_update(r);
+            }
+            (Some(UpdateState::Downloading(..) | UpdateState::Closing(_)), _) => {}
+            (_, Action::GbaDown(Btn::B)) => self.set_update(None),
+            _ => {}
+        }
+    }
+
+    fn install_update(&mut self, r: Release) {
+        self.update_jobs.ask(UpdateJob::Install(r.clone()));
+        self.update_busy = true;
+        let mut picker = CorePicker::open(Core::Mgba, self.now());
+        picker.start(self.now());
+        self.update_picker = Some(picker);
+        self.update_seat_at = None;
+        self.set_update(Some(UpdateState::Downloading(r, 0)));
+    }
+
+    fn take_update_events(&mut self) {
+        while let Some(event) = self.update_jobs.take() {
+            self.update_busy &= matches!(event, UpdateEvent::Progress(_));
+            match (&mut self.update, event) {
+                (Some(UpdateState::Downloading(_, got)), UpdateEvent::Progress(n)) => *got = n,
+                (Some(UpdateState::Downloading(r, _)), UpdateEvent::Staged) => {
+                    let r = r.clone();
+                    self.update_sounded = false;
+                    self.set_update(Some(UpdateState::Closing(r)));
+                    let led = self.led_state();
+                    self.set_led(led);
+                }
+                (Some(UpdateState::Downloading(..)), UpdateEvent::Failed(f)) => {
+                    self.set_update(Some(UpdateState::Failed(f)));
+                    let led = self.led_state();
+                    self.set_led(led);
+                }
+                (Some(UpdateState::Checking), UpdateEvent::Available(offers)) => {
+                    self.set_update(Some(UpdateState::Available(offers, 0)))
+                }
+                (Some(UpdateState::Checking), UpdateEvent::UpToDate) => {
+                    self.set_update(Some(UpdateState::UpToDate))
+                }
+                (Some(UpdateState::Checking), UpdateEvent::Failed(f)) => {
+                    self.set_update(Some(UpdateState::Failed(f)))
+                }
+                _ => {}
+            }
+        }
+        self.step_update();
+    }
+
+    fn step_update(&mut self) {
+        let now = self.now();
+        let t = now.saturating_sub(self.update_at);
+        let closing = matches!(self.update, Some(UpdateState::Closing(_)));
+        if let Some(picker) = &mut self.update_picker {
+            if !picker.closing()
+                && picker.seat() == Core::Mgba
+                && t >= crate::core_picker::OPEN_MS + UPDATE_SWAP_PAUSE_MS
+            {
+                picker.press(Press::Right, now);
+            }
+            if closing && !picker.closing() && picker.chip(now).seated == Some(Core::Gpsp) {
+                picker.press(Press::Back, now);
+                self.update_seat_at = Some(now + crate::core_picker::CLOSE_MS);
+            }
+        }
+        match self.update {
+            Some(UpdateState::Downloading(..)) => {
+                let led = match (t / UPDATE_BLINK_MS) % 2 {
+                    0 => self.led_state(),
+                    _ => LedState::Off,
+                };
+                self.set_led(led);
+            }
+            Some(UpdateState::Closing(_)) => {
+                let Some(inserting) = self.update_inserting() else {
+                    return;
+                };
+                if !self.update_sounded && inserting >= SEATED_AT - Sfx::Insert.lead() {
+                    self.update_sounded = true;
+                    self.sfx = Some(Sfx::Insert);
+                }
+                if inserting >= INSERT_S + POWER_ON_S + UPDATE_HOLD_MS as f32 / 1000.0 {
+                    match self.update_chosen() {
+                        Some(Kind::BaseOs) => self.begin_restart(),
+                        _ => {
+                            self.settle_saves();
+                            self.relaunching = true;
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn update_inserting(&self) -> Option<f32> {
+        let at = self.update_seat_at?;
+        let now = self.now();
+        (now >= at).then(|| (now - at) as f32 / 1000.0)
+    }
+
+    fn update_openness(&self) -> f32 {
+        self.update_picker
+            .as_ref()
+            .map_or(0.0, |p| p.openness(self.now()))
+    }
+
+    fn draw_update(&self, out: &mut Vec<Draw>) {
+        if let (
+            Some(scene),
+            Some(
+                UpdateState::Checking
+                | UpdateState::Available(..)
+                | UpdateState::Downloading(..)
+                | UpdateState::Closing(_),
+            ),
+        ) = (self.update_scene, &self.update)
+        {
+            return self.draw_update_scene(scene, out);
+        }
+        self.draw_update_prompt(out);
+    }
+
+    fn draw_update_scene(&self, scene: UpdateScene, out: &mut Vec<Draw>) {
+        let canvas = self.canvas();
+        let t = self.now().saturating_sub(self.update_at) as f32;
+        slot_ui::draw_menu_ground(canvas, self.menu_ground(), out);
+        if let (Some(UpdateState::Closing(_)), Some(inserting)) =
+            (&self.update, self.update_inserting())
+        {
+            let screen = ((inserting - INSERT_S) / POWER_ON_S).clamp(0.0, 1.0);
+            if screen > 0.0 {
+                self.draw_update_logo(scene, screen, out);
+            }
+            let kind = self.update_chosen().unwrap_or(Kind::Slot);
+            let cart = cart_for(kind);
+            SlotChrome {
+                cart: &cart,
+                face: Some(scene.carts[kind.index()].face),
+                rest: canvas.centred(CART_W as f32),
+                scale: 1.0,
+                seat: (inserting / SEATED_AT).clamp(0.0, 1.0),
+                alert: None,
+                dim: 0.0,
+                screen,
+                game: false,
+                over: true,
+                behind: [None, None],
+                slot: self.slot_faces,
+                canvas,
+            }
+            .draw(out);
+            return;
+        }
+        slot_ui::draw_slot_back(canvas, self.slot_faces, 1.0, out);
+        let rest = slot_ui::shelf_cart(canvas);
+        match &self.update {
+            Some(UpdateState::Available(offers, chosen)) => {
+                let u = (t / UPDATE_DROP_MS as f32).min(1.0) - 1.0;
+                let k = UPDATE_OVERSHOOT;
+                let drop = 1.0 + (k + 1.0) * u * u * u + k * u * u;
+                let phase =
+                    (t - UPDATE_DROP_MS as f32).max(0.0) / UPDATE_BOB_MS * std::f32::consts::TAU;
+                let rests = match offers.len() {
+                    1 => vec![rest],
+                    n => {
+                        let w = CART_W as f32 * UPDATE_PAIR_SCALE;
+                        let left = canvas.centred(w * n as f32 + UPDATE_PAIR_GAP * (n - 1) as f32);
+                        (0..n)
+                            .map(|i| {
+                                slot_ui::shelf_cart_at(
+                                    left + i as f32 * (w + UPDATE_PAIR_GAP),
+                                    UPDATE_PAIR_SCALE,
+                                )
+                            })
+                            .collect()
+                    }
+                };
+                for (i, (offer, at)) in offers.iter().zip(rests).enumerate() {
+                    let (bob, sway) = match i == *chosen {
+                        true => (
+                            (1.0 - phase.cos()) / 2.0 * UPDATE_BOB_PX,
+                            phase.sin() * UPDATE_SWAY,
+                        ),
+                        false => (0.0, 0.0),
+                    };
+                    let y = at.y - (at.y + at.h) * (1.0 - drop) - bob;
+                    let cart = scene.carts[offer.kind.index()];
+                    self.draw_update_cart(cart, Placed { y, ..at }, sway, out);
+                }
+            }
+            Some(UpdateState::Downloading(..) | UpdateState::Closing(_)) => {
+                self.draw_update_open(scene, self.update_openness(), out)
+            }
+            _ => {}
+        }
+        slot_ui::draw_slot_front(canvas, self.slot_faces, 1.0, out);
+        if let Some(&(tex, w, h)) = self.update_faces.first() {
+            let y = match self.update {
+                Some(UpdateState::Checking) => UPDATE_CHECK_Y,
+                _ => UPDATE_TITLE_Y,
+            };
+            out.push(Draw::Tex {
+                x: canvas.centred(w as f32).floor(),
+                y,
+                w: w as f32,
+                h: h as f32,
+                tex,
+                alpha: 1.0,
+            });
+        }
+        let Some([_, _, cancel, install, _]) = self.update_legends else {
+            return;
+        };
+        match self.update {
+            Some(UpdateState::Checking) => self.draw_side_legend(cancel, false, LINK_LEGEND_Y, out),
+            Some(UpdateState::Available(..)) => {
+                self.draw_side_legend(cancel, false, LINK_LEGEND_Y, out);
+                self.draw_side_legend(install, true, LINK_LEGEND_Y, out);
+            }
+            _ => {}
+        }
+    }
+
+    fn draw_update_logo(&self, scene: UpdateScene, alpha: f32, out: &mut Vec<Draw>) {
+        let canvas = self.canvas();
+        let [r, g, b, _] = scene.logo_ground;
+        out.push(Draw::Rect {
+            x: 0.0,
+            y: 0.0,
+            w: canvas.w,
+            h: OUT_H as f32,
+            colour: [r, g, b, alpha],
+        });
+        let (tex, w, h) = scene.logo;
+        out.push(Draw::Tex {
+            x: canvas.centred(w as f32).floor(),
+            y: ((OUT_H - h) / 2) as f32,
+            w: w as f32,
+            h: h as f32,
+            tex,
+            alpha,
+        });
+    }
+
+    fn draw_update_cart(&self, cart: UpdateCart, at: Placed, turn: f32, out: &mut Vec<Draw>) {
+        let at = grown(at, TURN_PAD as f32 * at.w / CART_W as f32);
+        out.push(Draw::Turned {
+            x: at.x,
+            y: at.y,
+            w: at.w,
+            h: at.h,
+            tex: cart.cart,
+            alpha: 1.0,
+            turn,
+        });
+    }
+
+    fn draw_update_open(&self, scene: UpdateScene, open: f32, out: &mut Vec<Draw>) {
+        let canvas = self.canvas();
+        let board = slot_ui::board_at(canvas, open);
+        let cart = scene.carts[self.update_chosen().unwrap_or(Kind::Slot).index()];
+        for tex in [cart.interior, scene.board] {
+            out.push(Draw::Tex {
+                x: board.x,
+                y: board.y,
+                w: board.w,
+                h: board.h,
+                tex,
+                alpha: 1.0,
+            });
+        }
+        if let Some(picker) = &self.update_picker {
+            self.draw_board_chip(
+                board,
+                &self.update_sockets,
+                picker.chip(self.now()),
+                &self.update_chips,
+                Some(scene.chip),
+                lift_of(open),
+                out,
+            );
+        }
+        let lit = self.update_clean().unwrap_or(0.0) * slot_ui::FINGERS.len() as f32;
+        let k = board.w / slot_ui::BOARD_W as f32;
+        for (i, (x0, x1)) in slot_ui::FINGERS.iter().enumerate() {
+            let clean = (lit - i as f32).clamp(0.0, 1.0);
+            if clean >= 1.0 {
+                continue;
+            }
+            let [r, g, b] = TARNISH;
+            out.push(Draw::Rect {
+                x: board.x + x0 * k,
+                y: board.y + slot_ui::FINGER_Y * k,
+                w: (x1 - x0 + 1.0) * k,
+                h: slot_ui::FINGER_H * k,
+                colour: [r, g, b, TARNISH_ALPHA * (1.0 - clean)],
+            });
+        }
+        self.draw_lid_shadow(slot_ui::shelf_cart(canvas), open, out);
+        let (lid, turn) = lid_at(canvas, open);
+        self.draw_update_cart(cart, lid, turn, out);
+    }
+
+    fn draw_update_prompt(&self, out: &mut Vec<Draw>) {
+        out.push(Draw::Rect {
+            x: 0.0,
+            y: 0.0,
+            w: self.canvas().w,
+            h: OUT_H as f32,
+            colour: [0.0, 0.0, 0.0, 1.0],
+        });
+        if let [title, detail] = self.update_faces[..] {
+            let top = ((OUT_H - title.2 - REPAIR_GAP - detail.2) / 2) as f32;
+            for ((tex, w, h), y) in [(title, top), (detail, top + (title.2 + REPAIR_GAP) as f32)] {
+                out.push(Draw::Tex {
+                    x: self.canvas().centred(w as f32).floor(),
+                    y,
+                    w: w as f32,
+                    h: h as f32,
+                    tex,
+                    alpha: 1.0,
+                });
+            }
+        }
+        let Some([_, _, cancel, install, back]) = self.update_legends else {
+            return;
+        };
+        match self.update {
+            Some(UpdateState::Available(..)) => {
+                self.draw_side_legend(cancel, false, LINK_LEGEND_Y, out);
+                self.draw_side_legend(install, true, LINK_LEGEND_Y, out);
+            }
+            Some(UpdateState::Battery(_)) => {
+                self.draw_side_legend(cancel, false, LINK_LEGEND_Y, out);
+                self.draw_side_legend(install, true, LINK_LEGEND_Y, out);
+            }
+            Some(UpdateState::UpToDate | UpdateState::Failed(_)) => {
+                self.draw_side_legend(back, false, LINK_LEGEND_Y, out)
+            }
+            _ => {}
+        }
+    }
+
+    pub fn set_update_faces(&mut self, faces: Vec<(TexId, u32, u32)>) {
+        self.update_faces = faces;
+    }
+
+    pub fn set_update_scene(&mut self, scene: UpdateScene) {
+        self.update_scene = Some(scene);
+    }
+
+    pub fn update_chip(&self) -> Option<usize> {
+        let picker = self.update_picker.as_ref()?;
+        picker.chip(self.now()).seated.map(Core::index)
+    }
+
+    pub fn update_clean(&self) -> Option<f32> {
+        match self.update_chip() {
+            Some(1) => self.update_progress(),
+            _ => self.update_progress().map(|_| 0.0),
+        }
+    }
+
+    pub fn update_versions(&self) -> Option<(String, String)> {
+        match self.update.as_ref()? {
+            UpdateState::Available(offers, i) => offers.get(*i),
+            UpdateState::Downloading(r, _) | UpdateState::Closing(r) => Some(r),
+            _ => None,
+        }
+        .map(|r| (format!("v{}", r.running), format!("v{}", r.version)))
+    }
+
+    pub fn update_chosen(&self) -> Option<Kind> {
+        match self.update.as_ref()? {
+            UpdateState::Available(offers, i) => offers.get(*i).map(|r| r.kind),
+            UpdateState::Downloading(r, _) | UpdateState::Closing(r) => Some(r.kind),
+            _ => None,
+        }
+    }
+
+    pub fn set_update_chips(&mut self, sockets: Vec<TexId>, chips: Vec<TexId>) {
+        self.update_sockets = sockets;
+        self.update_chips = chips;
+    }
+
+    pub fn update_headline(&self) -> bool {
+        matches!(self.update, Some(UpdateState::Available(..)))
+    }
+
+    pub fn set_update_legends(&mut self, legends: [(TexId, u32); 5]) {
+        self.update_legends = Some(legends);
     }
 
     fn game_menu_input(&mut self, action: Action) {
