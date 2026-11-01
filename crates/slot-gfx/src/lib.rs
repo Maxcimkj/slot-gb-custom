@@ -9,6 +9,7 @@ mod bezel;
 mod draw;
 mod fbdev;
 mod fbo;
+mod fit;
 mod gl;
 mod grade;
 #[cfg(target_os = "macos")]
