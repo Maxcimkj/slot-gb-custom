@@ -116,10 +116,10 @@ conflicts, take upstream's version and re-add its hooks.
 | `crates/slot-gfx/src/shaders.rs` | In `GAME_FRAG`, the first branch after `if (!inside) {\n    }`: `} else if (abs(u_mode - 6.0) < 0.5) {` (exactly mode 6, so it can never catch a mode upstream adds) holding its own copy of the Shimmerless code (as in the `u_mode > 4.5` branch) followed by its own copy of the Grid code (as in the `u_mode > 1.5` branch), sharing Shimmerless's `hp` |
 | `crates/slot/src/frontend.rs` | in `compose()`'s shader `match`: `slot_store::Shader::ShimmerlessGrid => ScreenEffect::ShimmerlessGrid,` |
 | `crates/slot/src/app.rs` | the shader toast `match`: `Shader::ShimmerlessGrid => Toast::ShaderShimmerlessGrid,`; the quick menu value `match`: `Shader::ShimmerlessGrid => QuickValue::ShimmerlessGrid,` |
-| `crates/slot-ui/src/toast.rs` | `ShaderShimmerlessGrid` after `ShaderShimmerless` in the enum and in `FIXED` (array length + 1); text `"Shader: Shimmerless Grid"` |
+| `crates/slot-ui/src/toast.rs` | `ShaderShimmerlessGrid` after `ShaderShimmerless` in the enum and in `FIXED` (array length + 1); text `"Shader: Shimmerless Grid"`; in `setting()`, `| Toast::ShaderShimmerlessGrid` added to the wide toasts (`NeedsMgba | NoWifi | PeerEnded`), since the text does not fit the normal 240 px toast at full size |
 | `crates/slot-ui/src/quick_menu.rs` | `ShimmerlessGrid` after `Shimmerless` in `enum QuickValue` and in `ALL` (array length + 1); text `"Shimmerless Grid"` |
 | `crates/slot-ui/tests/quick_menu.rs`, `crates/slot-ui/tests/toast.rs` | `"Shimmerless Grid"` / `Toast::ShaderShimmerlessGrid` after Shimmerless's entry in the lists these upstream tests spell out in full; in `toast.rs`'s `the_banner_says_what_happened_and_never_what_is_on_screen` the fixed-banner count (`all[..N]`, `all[N..N + palettes]`, `all[N + palettes..]`) is upstream's plus one |
-| `crates/slot-gfx/tests/pipeline.rs` | `#![cfg(target_os = "macos")]` at the top: it uses `HeadlessSurface`, which only exists on macOS, and the sync runner is Linux |
+| `crates/slot-gfx/tests/pipeline.rs`, `crates/slot-gfx/tests/quad.rs`, `crates/slot/tests/render_fetch_art.rs`, `crates/slot/tests/render_studio.rs` | `#![cfg(target_os = "macos")]` at the top: they use `HeadlessSurface`, which only exists on macOS, and the sync runner is Linux. Add the same line to any new upstream test that uses it |
 
 Shimmerless Grid is written into upstream's shader like the other filters, so it reads like
 them and the program is built as upstream builds it. It has its own copy of the Shimmerless and
@@ -206,10 +206,9 @@ after a merge, the merge is wrong: fix the code, not the test.
 
 - Renderer tests are `#![cfg(target_os = "macos")]` (headless GL) and **silently pass elsewhere**.
   A green run on Linux CI proves nothing about rendering; run on macOS.
-- **Known failures not caused by the fork** (they fail the same on unmodified upstream on a Mac):
-  `slot-ui` `toast::tests::every_toast_is_set_at_full_size` ("Please switch to mGBA" set at 15 px)
-  and, in `crates/slot-gfx/tests/layout.rs`, the stored-frame-hash tests, which probably differ
-  per GPU. Do not "fix" them in the fork.
+- `slot-ui` `toast::tests::every_toast_is_set_at_full_size` checks every toast's text fits its box
+  at full size. A fork toast that does not fit goes in the wide-toast list (section 3), as upstream
+  does for its own long toasts.
 
 ## 5. Releases
 
@@ -241,9 +240,10 @@ domain setting; disable Pages or the workflow in the fork's settings rather than
   pixel apart, so frames differ pixel by pixel.
 - **Settings left from the old Fit:** `fit` entries in `Config/video_mode.txt` no longer parse
   and fall back to Actual; users set Scale → Fit once per console instead.
-- **Tags so far:** up to `v1.12.0-gp-custom.3`. The old fork Fit's tags (`v1.7.0-gp-custom` to
-  `v1.12.0-gp-custom.3`) stay as they are; `v1.7.0-gp-custom` does not build (its Fit bezel art
-  was missing) and must not be reused.
+- **Tags so far:** the old fork Fit is in `v1.7.0-gp-custom` to `v1.12.0-gp-custom.3` and in
+  `v1.13.0-gp-custom.1` (a sync that ran before Shimmerless Grid reached `main`). Shimmerless Grid
+  is in `v1.12.0-gp-custom.4` and from `v1.13.0-gp-custom.2` on. Old tags stay as they are;
+  `v1.7.0-gp-custom` does not build (its Fit bezel art was missing) and must not be reused.
 
 ## 7. Background on slot that the change depends on
 

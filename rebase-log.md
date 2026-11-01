@@ -2,6 +2,135 @@
 
 One record per upstream sync, newest first. Written by `.github/workflows/sync-upstream.yml`; see `FORK-NOTES.md` for how the fork is kept.
 
+## 2026-11-01 23:27 UTC · upstream `ab518c6` → `0b95d32`
+
+Pull request: https://github.com/Maxcimkj/slot-gb-custom/pull/16
+Run: https://github.com/Maxcimkj/slot-gb-custom/actions/runs/41361155562
+
+### Upstream changes (45 commits)
+
+- `0b95d32` Install Bun in the release build (Brandon T. Kowalski)
+- `b091e46` Update changelog to be more clear (Brandon T. Kowalski)
+- `37fc9f8` Show Gamebit checkboxes when ticked and call it the resume state (Brandon T. Kowalski)
+- `bc75cef` Proofread the new docs (Brandon T. Kowalski)
+- `d95650f` Bring stale slot-ui tests up to date with Paper and the Stop legend (Brandon T. Kowalski)
+- `122e0b7` Keep long toasts at full size (Brandon T. Kowalski)
+- `2b383a0` More docs edits (Brandon T. Kowalski)
+- `30777d0` Match the Emerald shell to the real cart green (Brandon T. Kowalski)
+- `12c12d0` Check the Gamebit PIN when the page regains focus (Brandon T. Kowalski)
+- `7730178` Install a new boot logo from the launch script under a pill (Brandon T. Kowalski)
+- `059540f` Put Fetch Missing Art above Check for Updates (Brandon T. Kowalski)
+- `9bb6640` Send Gamebit uploads as bytes so Safari finishes them (Brandon T. Kowalski)
+- `27218ce` Keep keyboard moves in line and repeat held buttons (Brandon T. Kowalski)
+- `267cc36` Offer a new password when a network rejects one (Brandon T. Kowalski)
+- `6e5d48f` Split the Network page into saved networks and a scan screen (Brandon T. Kowalski)
+- `ddfa2cc` Slide Gamebit in at once and cache small label batches quietly (Brandon T. Kowalski)
+- `4f402cb` Set the clock automatically from network time (Brandon T. Kowalski)
+- `ddcb946` Show the SSID and network tools together once Wi-Fi has an address (Brandon T. Kowalski)
+- `b6b754a` Print the Stop legend on the foot of the sheet (Brandon T. Kowalski)
+- `d5fe76c` Polish the Wireless menu, keyboard help and Wi-Fi messages (Brandon T. Kowalski)
+- `5076f1b` Offer the Title label when a cart wears its only art (Brandon T. Kowalski)
+- `0d9d89f` Confirm Fetch Label replacing a label and refresh the save count (Brandon T. Kowalski)
+- `16a7f3b` Block deleting, renaming and moving top-level folders (Brandon T. Kowalski)
+- `0029fda` Answer as slot.local first, then the device name (Brandon T. Kowalski)
+- `7c9f4c6` Doc edits (Brandon T. Kowalski)
+- `08f141e` Guide docs (Brandon T. Kowalski)
+- `eb34b32` Start the color picker on the color in use (Brandon T. Kowalski)
+- `3e0c9fb` Update wordmark (Brandon T. Kowalski)
+- `111923c` Call the guide Y legend Close (Brandon T. Kowalski)
+- `3fe8b43` Answer as gamebit.local and fall back to the model name on a conflict (Brandon T. Kowalski)
+- `6bde92c` Wrap game guides and rework their controls, closes #176 (Brandon T. Kowalski)
+- `7be0f0c` Add Gamebit, a web page for managing the card over Wi-Fi (Brandon T. Kowalski)
+- `0d4f352` Fix the device clippy errors (Brandon T. Kowalski)
+- `170fac5` Add a Network menu to join Wi-Fi, check for updates and fetch art (Brandon T. Kowalski)
+- `9a04f6f` Match duplicate labels by look so a WebP matches its PNG (Brandon T. Kowalski)
+- `47acf45` Hide Shimmerless for GBA on 3:2 screens (Brandon T. Kowalski)
+- `e5e0ac8` Load RetroArch compressed saves instead of overwriting them, closes #165 (Brandon T. Kowalski)
+- `3d6c8d3` Fetch art as WebP over one connection per job (Brandon T. Kowalski)
+- `42ae2b9` Update questions (Brandon T. Kowalski)
+- `036a10f` Document the Shelf wallpaper (Brandon T. Kowalski)
+- `d752f44` Keep the art index in Cache so it survives a boot (Brandon T. Kowalski)
+- `38b5acb` Add the on-device cart studio, art fetch and OTA cancel (Brandon T. Kowalski)
+- `92e04eb` Change the favorite star to a red heart (Brandon T. Kowalski)
+- `1e4a068` Decode shelf wallpapers on a worker after boot (Brandon T. Kowalski)
+- `c037a15` Add a Shelf wallpaper that follows the current shelf (Brandon T. Kowalski)
+
+### Fork changes kept on top (6 commits)
+
+- `df4316a` Run the upstream sync once a week instead of daily
+- `b9adfc6` Fit: upstream's Grid, softening only in Fit, Fit decided from a seated cart
+- `35cbb3f` Fit: Actual-style bezels, even grid, and all fork code in fit*.rs
+- `8575439` Make README.md the fork's own and keep it on every upstream sync
+- `c59df76` Take release notes for -gp-custom tags from the upstream version's section
+- `0b46d92` Add new fit mode for gb, gbc and bezels
+
+### Conflicts
+
+- Resolved by OpenCode with deepseek/deepseek-v4.1-flash: `crates/slot/src/frontend.rs`, `crates/slot/src/lib.rs`
+
+#### Agent notes
+
+##### Sync notes: upstream `0b95d32` into `main`
+
+##### crates/slot/src/frontend.rs
+
+Upstream added `type BezelImage = (Console, BezelPick, Option<BezelArt>, (u32, u32));` and changed
+`BezelSync.image` to use the alias instead of spelling the tuple out. The fork appends a `bool`
+(the fitted flag) to that tuple, which the fork's `fit::bezel_key`/`fit::game_bezel` hooks read as
+`shown.4`. I kept upstream's alias and its `image: Option<BezelImage>` field, and added the `bool`
+to the alias so the tuple still carries the fitted flag. The fork's hooks further down
+(`fit::bezel_key`, the first `match` arm, and `set_soft_picture` in `compose`) merged cleanly and
+are unchanged.
+
+##### crates/slot/src/lib.rs
+
+Upstream inserted `pub mod fetch_art;` and `pub mod fetch_faces;` after `pub mod face_builder;`.
+The fork's hook there was `pub mod fit;`. I kept both of upstream's module declarations and added
+`pub mod fit;` right after `pub mod fetch_faces;`, leaving upstream's lines exactly as written.
+
+##### crates/slot-gfx/tests/quad.rs
+
+Upstream's new renderer test (from the "on-device cart studio, art fetch and OTA cancel" commit)
+imports `slot_gfx::HeadlessSurface`, which upstream exports only under `#[cfg(target_os =
+"macos")]`, so the test did not compile on this Linux runner. Every sibling renderer test
+(`layout.rs`, `pipeline.rs`, the fork's `fit_*.rs`) already carries `#![cfg(target_os =
+"macos")]`; I added the same gate, as `rebase-log.md` records for upstream `pipeline.rs` before.
+No test body or assertion changed.
+
+##### crates/slot/tests/render_fetch_art.rs
+
+Upstream added this render test in the same commit and it likewise uses macOS-only
+`HeadlessSurface` without a gate, so it broke the host build. I added `#![cfg(target_os =
+"macos")]` at the top, matching the other render tests; its setup and assertions are untouched.
+
+##### crates/slot/tests/render_studio.rs
+
+Upstream added this render test in the same commit and it too uses macOS-only `HeadlessSurface`
+without a gate. I added `#![cfg(target_os = "macos")]` at the top; nothing else changed.
+
+##### Checks
+
+- `python3 .github/sync/sync_upstream.py fork-fmt` — passed; no changes to the fork's files.
+- `python3 .github/sync/sync_upstream.py fork-clippy` — passed; no compile errors and no lints in
+  the fork's files (9 warnings in upstream's own code).
+- `python3 .github/sync/sync_upstream.py fork-clippy device` — passed.
+- `cargo build --profile device --target-dir target-device -p slot --no-default-features --features device` — passed.
+- `python3 .github/sync/sync_upstream.py fork-tests` — every Linux Fit test ran and passed; the
+  macOS-only `fit_pipeline`, `fit_colour` and `fit_render_bezel` tests were skipped as expected.
+- `cargo test -p slot -p slot-gfx --lib --tests` — passed. Tests that need a real mGBA core fall
+  back to the mock core on this machine; none failed for a missing core, BIOS or display.
+
+### Checks
+
+| Check | Result |
+|---|---|
+| `sync_upstream.py fork-fmt --check`: rustfmt on the fork's own files | ✅ success |
+| `sync_upstream.py fork-clippy`: builds everything, lints the fork's own files | ✅ success |
+| `sync_upstream.py fork-clippy device`: the same for the device build | ✅ success |
+| `cargo build --profile device -p slot --no-default-features --features device` | ✅ success |
+| `sync_upstream.py fork-tests`: the fork's Fit tests (FORK-NOTES.md section 4) | ✅ success |
+| `cargo test --workspace --no-fail-fast --lib --bins --tests` (advisory: some tests need cores the runner lacks) | ✅ success |
+
 ## 2026-10-31 11:08 UTC · upstream `c19ccbc` → `ab518c6`
 
 Pull request: https://github.com/Maxcimkj/slot-gb-custom/pull/15

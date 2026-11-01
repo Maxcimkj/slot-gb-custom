@@ -86,7 +86,8 @@ size slot offers two shaders that each fix half of the picture:
 - Everything else is slot as it is, including the other shaders, Fit, its bezels and screenshots.
 
 > [!NOTE]
-> **Upgrading from a fork release before Shimmerless Grid** (`v1.12.0-gp-custom.3` or older)? The
+> **Upgrading from a fork release with the old Fit mode** (`v1.12.0-gp-custom.3` or older, or
+> `v1.13.0-gp-custom.1`)? The
 > fork's own per-game Fit mode is gone: slot's Fit scale replaces it. Games you had switched to
 > Fit with L1 now open at Actual size. Set Settings → Screen → Game Boy (and Game Boy Color) →
 > Scale to **Fit** once, and every game of that console is fitted. L1/R1 still switch a game
@@ -103,8 +104,8 @@ Shimmerless and Grid with its own copy of their code, so changes slot makes to t
 change it. slot's other files stay exactly as slot wrote them, apart from one-line hooks that add
 the new choice next to Shimmerless. [`FORK-NOTES.md`](FORK-NOTES.md) lists every hook.
 
-Fork releases are tagged `v<slot version>-gp-custom.<n>`, for example `v1.12.0-gp-custom.4` is
-slot 1.12.0 plus Shimmerless Grid. Their release notes are slot's.
+Fork releases are tagged `v<slot version>-gp-custom.<n>`, for example `v1.13.0-gp-custom.2` is
+slot 1.13.0 plus Shimmerless Grid. Their release notes are slot's.
 
 > [!IMPORTANT]
 > **Download the latest fork release from the

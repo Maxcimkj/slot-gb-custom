@@ -1,5 +1,5 @@
 mod art;
-pub use art::cover;
+pub use art::{cover, cover_bytes};
 mod bitmaps;
 pub use bitmaps::{
     link_port, link_port_light, slot_back, slot_back_light, slot_front, slot_front_light,
@@ -16,12 +16,15 @@ mod footer;
 mod guide;
 mod hud;
 mod icon;
+mod keyboard;
 mod link_art;
+mod network_menu;
 mod plate;
 mod polaroids;
 mod power_menu;
 mod quick_menu;
 mod rebuild;
+mod receipt;
 mod refusal;
 mod shelf;
 mod shell;
@@ -30,6 +33,11 @@ mod silhouette;
 mod slot_chrome;
 mod sticker;
 pub mod text;
+pub mod house_label;
+pub mod hue;
+pub mod liner;
+pub mod palette;
+pub mod sticker_curl;
 mod toast;
 
 pub use art::decode as decode_png;
@@ -49,9 +57,9 @@ pub use board::{
     SOCKET_W, TURN_PAD,
 };
 pub use cart::{
-    cart_backing, cart_box, cart_face, cart_face_with, cart_interior, cart_shadow, clean_label,
+    bare_face, cart_backing, cart_box, cart_face, cart_face_with, cart_interior, cart_shadow, clean_label,
     gb_cart_shadow, gb_label_panel, gb_shell_of, is_clear, label_colour, label_panel, label_size,
-    label_tags, label_text, neutral_shell, seated_box, shows_interior, CartFace, CART_H, CART_W,
+    label_tags, label_text, neutral_shell, seated_box, shows_interior, text_label, CartFace, CART_H, CART_W,
     GBC_LABEL_H, GBC_LABEL_W, GBC_LABEL_X, GBC_LABEL_Y, GB_CART_H, GB_CART_W, GB_LABEL_H,
     GB_LABEL_W, GB_LABEL_X, GB_LABEL_Y, LABEL_H, LABEL_W, LABEL_WELL, LABEL_X, LABEL_Y,
 };
@@ -60,21 +68,31 @@ pub use clock::{
     ClockScreen, Part,
 };
 pub use draw::{Canvas, Draw, TexId, OUT_H, OUT_W};
-pub use footer::{draw_corners, draw_footer, Printed, FOOTER_Y};
+pub use footer::{draw_corners, draw_footer, draw_wifi_icon, Printed, FOOTER_Y};
 pub use guide::{
     cell, fitting_zoom, guide_help_face, mono_font, page_box, Guide, GuideGlyphs, GuideView,
-    GUIDE_COLUMNS, GUIDE_HELP_TITLE, GUIDE_HINTS, GUIDE_ZOOMS, PAN_COLS,
+    GUIDE_COLUMNS, GUIDE_HELP_HINT, GUIDE_HELP_TITLE, GUIDE_HINTS, GUIDE_ZOOMS, PAN_COLS,
+};
+pub use keyboard::{
+    draw_keyboard, draw_keyboard_legends, key_rect, keyboard_cap_faces, keyboard_faces,
+    keyboard_help_columns, keyboard_help_face, keyboard_text_face, Cap, KeyTex, Keyboard,
+    KeyboardFaces, KeyboardTex, Layout, Shortcut, Special, Typed, KEYBOARD_HELP_TITLE,
+};
+pub use network_menu::{
+    bars_rect, lock_rect, net_bars_face, net_lock_face, net_row_top, net_window, wifi_face, NetFace,
+    NetIcons, NetLine, NetworkList,
 };
 pub use hud::{
     badge_at, ff_badge, footer_ink, FfState, Hud, HudKind, LinkBadge, Millis, ALARM_BAND_H,
     HUD_ICON_PX, HUD_INK, HUD_MS, LINK_HOST_INK, LINK_JOIN_INK, PLATE_H,
 };
-pub use icon::{badge_face, icon_box, icon_face, star_face, warm_fonts, Badge, Icon};
+pub use icon::{badge_face, heart_face, icon_box, icon_face, warm_fonts, Badge, Icon};
 pub use link_art::{
     link_art, LinkArt, ADAPTER_BASE_X, ADAPTER_BASE_Y, ADAPTER_H, ADAPTER_W, ARCS, ARROW_H,
     ARROW_LEFT_X, ARROW_RIGHT_X, ARROW_W, ARROW_Y, CLICKS_H, CLICKS_W, CLICKS_X, CLICKS_Y, PLUG_H,
     PLUG_TIP_X, PLUG_W, PORT_H, PORT_W, PORT_Y,
 };
+pub use receipt::{receipt_blank, receipt_face, ReceiptText};
 pub use plate::{
     arrows_hint_coloured, arrows_hint_face, arrows_hint_width, cap_width,
     hint_coloured, hint_face, hint_quad, hint_row, hint_width, pad_hint_face, pad_hint_width,
@@ -85,10 +103,12 @@ pub use plate::{
 pub use polaroids::{
     draw_album_chrome, photo_face, AlbumChrome, PhotoFace, Polaroids, DOT, LEGEND, PHOTO_H, PHOTO_W,
 };
-pub use power_menu::{menu_detail_face, menu_face, PowerChoice, MENU_PAD};
+pub use power_menu::{heading_face, menu_detail_face, menu_face, PowerChoice, MENU_PAD};
 pub use quick_menu::{
     clock_legend_faces, core_button_legends, delete_legends, draw_menu_ground, link_button_legends,
-    prompt_legends, quick_description_face, quick_label_face, quick_legend_faces,
+    fetch_choice_legends, fetch_legends, fetch_skip_legend, print_stop_legend, prompt_legends,
+    studio_legend,
+    StudioGlyph, quick_description_face, quick_label_face, quick_legend_faces,
     quick_pointer_face, quick_row_top, quick_row_top_at, quick_scroll, quick_value_face,
     quick_warning_value_face, quick_window, repair_legends, update_legends, QuickMenu,
     QuickMenuFaces, QuickRow, QuickScroll, QuickValue, QUICK_EDGE, QUICK_LABEL_X, QUICK_PITCH,
@@ -96,7 +116,7 @@ pub use quick_menu::{
 };
 pub use rebuild::{headline_face, rebuild_count_face, rebuild_title_face, RebuildScreen};
 pub use refusal::Refusal;
-pub use shelf::{foot_y, repeat_gap, rest_y, Shelf, REPEAT_DELAY_MS, STAR_INK, STAR_SCALE};
+pub use shelf::{foot_y, repeat_gap, rest_y, Shelf, HEART_INK, HEART_SCALE, REPEAT_DELAY_MS};
 pub use shell::{
     gb_plastics, gb_table_shells, gba_plastics, gba_shell_for,
     lookup_order_is_exact_then_family_then_default, shell_for, shell_presets, table_keys, Finish,
@@ -115,4 +135,4 @@ pub use sticker::{
     draw_sticker, head_rows, sticker_face, sticker_lines, sticker_rect, StickerFields, COPYRIGHT,
     CREDITS, DC, HOME, ORIGIN, STICKER_H, STICKER_W,
 };
-pub use toast::{toast_box, toast_face, toast_rect, Toast};
+pub use toast::{toast_box, toast_face, toast_face_text, toast_rect, Toast};
