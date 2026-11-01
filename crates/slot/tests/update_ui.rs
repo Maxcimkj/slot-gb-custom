@@ -3,7 +3,7 @@ mod common;
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 
-use common::{app_booting_at, tmp_root_with_carts, CLOCK_IS_SET};
+use common::{app_booting_at, connect, tmp_root_with_carts, CLOCK_IS_SET};
 use slot::app::{App, Phase};
 use slot::build_info::Build;
 use slot::core_picker::{CLOSE_MS, HOP_MS, OPEN_MS};
@@ -17,6 +17,8 @@ use tempfile::TempDir;
 struct Log {
     asked: Vec<UpdateJob>,
     events: VecDeque<UpdateEvent>,
+    cancels: usize,
+    committed: bool,
 }
 
 #[derive(Clone, Default)]
@@ -30,11 +32,25 @@ impl UpdateJobs for FakeJobs {
     fn take(&mut self) -> Option<UpdateEvent> {
         self.0.lock().unwrap().events.pop_front()
     }
+
+    fn cancel(&mut self) -> bool {
+        let mut log = self.0.lock().unwrap();
+        log.cancels += 1;
+        !log.committed
+    }
 }
 
 impl FakeJobs {
     fn asked(&self) -> Vec<UpdateJob> {
         self.0.lock().unwrap().asked.clone()
+    }
+
+    fn cancels(&self) -> usize {
+        self.0.lock().unwrap().cancels
+    }
+
+    fn commit(&self) {
+        self.0.lock().unwrap().committed = true;
     }
 
     fn send(&self, a: &mut App, event: UpdateEvent) {
@@ -66,7 +82,7 @@ fn press(a: &mut App, btn: Btn) {
     a.apply(Action::GbaUp(btn));
 }
 
-fn on_about(wifi: bool) -> (TempDir, App, FakeJobs) {
+fn on_updates() -> (TempDir, App, FakeJobs) {
     let d = tmp_root_with_carts(&["Emerald", "Fusion"]);
     write_slot_state(
         d.path(),
@@ -76,19 +92,34 @@ fn on_about(wifi: bool) -> (TempDir, App, FakeJobs) {
         },
     )
     .unwrap();
-    if wifi {
-        std::fs::write(d.path().join("Config/wifi.conf"), b"network={}\n").unwrap();
-    }
+    std::fs::write(d.path().join("Config/wifi.conf"), b"network={}\n").unwrap();
     let (mut a, _clock) = app_booting_at(d.path(), CLOCK_IS_SET);
     let jobs = FakeJobs::default();
     a.set_update_jobs(Box::new(jobs.clone()));
     assert!(matches!(a.phase(), Phase::Shelf), "{:?}", a.phase());
+    connect(&mut a);
     a.apply(Action::QuickMenu);
-    press(&mut a, Btn::Up);
-    assert_eq!(a.quick_menu(), Some(QuickRow::About));
+    while a.quick_menu() != Some(QuickRow::Network) {
+        press(&mut a, Btn::Down);
+    }
     press(&mut a, Btn::A);
-    assert!(matches!(a.phase(), Phase::About));
+    for _ in 0..6 {
+        if a.quick_menu() == Some(QuickRow::CheckUpdates) {
+            break;
+        }
+        press(&mut a, Btn::Down);
+    }
+    assert_eq!(
+        a.quick_menu(),
+        Some(QuickRow::CheckUpdates),
+        "{:?}",
+        a.hidden_rows()
+    );
     (d, a, jobs)
+}
+
+fn on_updates_row(a: &App) -> bool {
+    !a.update_shown() && a.quick_menu() == Some(QuickRow::CheckUpdates)
 }
 
 fn advance(a: &mut App, ms: u64) {
@@ -109,19 +140,19 @@ fn text(a: &App) -> Option<(String, String)> {
 }
 
 #[test]
-fn no_wifi_conf_means_no_ota() {
-    let (_d, mut a, jobs) = on_about(false);
-    assert!(!a.update_offered());
-    press(&mut a, Btn::X);
-    assert!(jobs.asked().is_empty());
-    assert!(!a.update_shown());
+fn check_for_updates_opens_the_ota_scene() {
+    let (_d, mut a, jobs) = on_updates();
+    press(&mut a, Btn::A);
+    assert_eq!(jobs.asked(), [UpdateJob::Check]);
+    assert!(a.update_shown());
+    assert!(!a.restarting());
 }
 
 #[test]
 fn y_checks_and_a_newer_release_offers_install() {
-    let (_d, mut a, jobs) = on_about(true);
+    let (_d, mut a, jobs) = on_updates();
     assert!(a.update_offered());
-    press(&mut a, Btn::X);
+    press(&mut a, Btn::A);
     assert_eq!(jobs.asked(), [UpdateJob::Check]);
     assert_eq!(
         text(&a),
@@ -144,8 +175,8 @@ fn y_checks_and_a_newer_release_offers_install() {
 
 #[test]
 fn progress_counts_bytes_against_the_release_size() {
-    let (_d, mut a, jobs) = on_about(true);
-    press(&mut a, Btn::X);
+    let (_d, mut a, jobs) = on_updates();
+    press(&mut a, Btn::A);
     jobs.send(&mut a, UpdateEvent::Available(vec![big_release()]));
     press(&mut a, Btn::A);
     jobs.send(&mut a, UpdateEvent::Progress(2_000));
@@ -156,8 +187,8 @@ fn progress_counts_bytes_against_the_release_size() {
 
 #[test]
 fn staged_closes_the_cart_seats_it_and_then_relaunches() {
-    let (_d, mut a, jobs) = on_about(true);
-    press(&mut a, Btn::X);
+    let (_d, mut a, jobs) = on_updates();
+    press(&mut a, Btn::A);
     jobs.send(&mut a, UpdateEvent::Available(vec![big_release()]));
     press(&mut a, Btn::A);
     jobs.send(&mut a, UpdateEvent::Staged);
@@ -187,19 +218,18 @@ fn staged_closes_the_cart_seats_it_and_then_relaunches() {
 
 #[test]
 fn cancel_returns_to_about() {
-    let (_d, mut a, jobs) = on_about(true);
-    press(&mut a, Btn::X);
+    let (_d, mut a, jobs) = on_updates();
+    press(&mut a, Btn::A);
     jobs.send(&mut a, UpdateEvent::Available(vec![release()]));
     press(&mut a, Btn::B);
-    assert!(!a.update_shown());
-    assert!(matches!(a.phase(), Phase::About));
+    assert!(on_updates_row(&a));
     assert_eq!(jobs.asked(), [UpdateJob::Check]);
 }
 
 #[test]
 fn up_to_date_says_so_and_b_returns_to_about() {
-    let (_d, mut a, jobs) = on_about(true);
-    press(&mut a, Btn::X);
+    let (_d, mut a, jobs) = on_updates();
+    press(&mut a, Btn::A);
     jobs.send(&mut a, UpdateEvent::UpToDate);
     let running = Build::current().version;
     assert_eq!(
@@ -210,14 +240,13 @@ fn up_to_date_says_so_and_b_returns_to_about() {
         ))
     );
     press(&mut a, Btn::B);
-    assert!(!a.update_shown());
-    assert!(matches!(a.phase(), Phase::About));
+    assert!(on_updates_row(&a));
 }
 
 #[test]
 fn b_does_not_cancel_a_download() {
-    let (_d, mut a, jobs) = on_about(true);
-    press(&mut a, Btn::X);
+    let (_d, mut a, jobs) = on_updates();
+    press(&mut a, Btn::A);
     jobs.send(&mut a, UpdateEvent::Available(vec![release()]));
     press(&mut a, Btn::A);
     press(&mut a, Btn::B);
@@ -227,8 +256,8 @@ fn b_does_not_cancel_a_download() {
 
 #[test]
 fn a_clock_failure_says_to_set_the_clock() {
-    let (_d, mut a, jobs) = on_about(true);
-    press(&mut a, Btn::X);
+    let (_d, mut a, jobs) = on_updates();
+    press(&mut a, Btn::A);
     jobs.send(&mut a, UpdateEvent::Failed(UpdateFail::Clock));
     assert_eq!(
         text(&a),
@@ -245,7 +274,7 @@ fn every_failure_has_its_own_words() {
         (
             UpdateFail::NoWifi,
             "Could not join Wi-Fi",
-            "Check the networks in Config/wifi.conf.",
+            "Check Network in the Wireless menu.",
         ),
         (
             UpdateFail::Offline,
@@ -274,8 +303,8 @@ fn every_failure_has_its_own_words() {
         ),
     ];
     for (fail, title, detail) in want {
-        let (_d, mut a, jobs) = on_about(true);
-        press(&mut a, Btn::X);
+        let (_d, mut a, jobs) = on_updates();
+        press(&mut a, Btn::A);
         jobs.send(&mut a, UpdateEvent::Failed(fail.clone()));
         assert_eq!(text(&a), Some((title.into(), detail.into())), "{fail:?}");
         press(&mut a, Btn::B);
@@ -284,31 +313,31 @@ fn every_failure_has_its_own_words() {
 }
 
 #[test]
-fn leaving_about_mid_check_drops_the_result() {
-    let (_d, mut a, jobs) = on_about(true);
-    press(&mut a, Btn::X);
+fn leaving_the_network_page_mid_check_drops_the_result() {
+    let (_d, mut a, jobs) = on_updates();
+    press(&mut a, Btn::A);
     press(&mut a, Btn::B);
-    assert!(!a.update_shown());
+    assert!(on_updates_row(&a));
     press(&mut a, Btn::B);
-    assert_eq!(a.quick_menu(), Some(QuickRow::About));
+    assert_eq!(a.quick_menu(), Some(QuickRow::Network));
     jobs.send(&mut a, UpdateEvent::Available(vec![release()]));
     assert!(!a.update_shown());
-    assert_eq!(a.quick_menu(), Some(QuickRow::About));
+    assert_eq!(a.quick_menu(), Some(QuickRow::Network));
 }
 
 #[test]
 fn no_update_while_linked() {
-    let (_d, mut a, jobs) = on_about(true);
+    let (_d, mut a, jobs) = on_updates();
     a.begin_link(1);
     assert!(!a.update_offered());
-    press(&mut a, Btn::X);
+    press(&mut a, Btn::A);
     assert!(jobs.asked().is_empty());
 }
 
 #[test]
 fn closing_the_lid_mid_check_drops_the_prompt() {
-    let (_d, mut a, jobs) = on_about(true);
-    press(&mut a, Btn::X);
+    let (_d, mut a, jobs) = on_updates();
+    press(&mut a, Btn::A);
     a.apply(Action::LidClose);
     a.apply(Action::LidOpen);
     jobs.send(&mut a, UpdateEvent::Available(vec![release()]));
@@ -317,8 +346,8 @@ fn closing_the_lid_mid_check_drops_the_prompt() {
 
 #[test]
 fn closing_the_lid_mid_download_still_relaunches() {
-    let (_d, mut a, jobs) = on_about(true);
-    press(&mut a, Btn::X);
+    let (_d, mut a, jobs) = on_updates();
+    press(&mut a, Btn::A);
     jobs.send(&mut a, UpdateEvent::Available(vec![release()]));
     press(&mut a, Btn::A);
     a.apply(Action::LidClose);
@@ -330,17 +359,17 @@ fn closing_the_lid_mid_download_still_relaunches() {
 
 #[test]
 fn a_second_check_waits_for_the_first_to_answer() {
-    let (_d, mut a, jobs) = on_about(true);
-    press(&mut a, Btn::X);
+    let (_d, mut a, jobs) = on_updates();
+    press(&mut a, Btn::A);
     press(&mut a, Btn::B);
     assert!(!a.update_offered());
-    press(&mut a, Btn::X);
+    press(&mut a, Btn::A);
     assert_eq!(jobs.asked(), [UpdateJob::Check]);
     assert!(!a.update_shown());
     jobs.send(&mut a, UpdateEvent::Failed(UpdateFail::Offline));
     assert!(!a.update_shown());
     assert!(a.update_offered());
-    press(&mut a, Btn::X);
+    press(&mut a, Btn::A);
     assert_eq!(jobs.asked(), [UpdateJob::Check, UpdateJob::Check]);
     jobs.send(&mut a, UpdateEvent::Available(vec![release()]));
     press(&mut a, Btn::A);
@@ -350,19 +379,15 @@ fn a_second_check_waits_for_the_first_to_answer() {
 }
 
 #[test]
-fn without_wifi_conf_x_does_nothing() {
-    let (_d, mut a, jobs) = on_about(false);
-    press(&mut a, Btn::X);
-    assert!(!a.restarting());
-    assert!(jobs.asked().is_empty());
-}
-
-#[test]
-fn with_wifi_conf_x_checks_and_does_not_restart() {
-    let (_d, mut a, jobs) = on_about(true);
-    press(&mut a, Btn::X);
-    assert!(!a.restarting());
-    assert_eq!(jobs.asked(), [UpdateJob::Check]);
+fn x_on_about_restarts() {
+    for wifi in [true, false] {
+        let (_d, mut s) = session_on_about(wifi);
+        let a = s.app_mut();
+        a.apply(Action::GbaDown(Btn::X));
+        a.apply(Action::GbaUp(Btn::X));
+        assert!(a.restarting(), "wifi.conf {wifi}");
+        assert!(!a.update_shown(), "wifi.conf {wifi}");
+    }
 }
 
 fn session_on_about(wifi: bool) -> (TempDir, slot::session::Session) {
@@ -390,7 +415,7 @@ fn select_start(s: &mut slot::session::Session) {
 }
 
 #[test]
-fn select_start_restarts_on_about() {
+fn select_start_restarts_on_updates() {
     for wifi in [true, false] {
         let (_d, mut s) = session_on_about(wifi);
         select_start(&mut s);
@@ -409,8 +434,8 @@ fn select_start_does_not_restart_on_the_shelf() {
 
 #[test]
 fn the_chip_hops_from_the_old_version_to_the_new_before_the_pins_clean() {
-    let (_d, mut a, jobs) = on_about(true);
-    press(&mut a, Btn::X);
+    let (_d, mut a, jobs) = on_updates();
+    press(&mut a, Btn::A);
     jobs.send(&mut a, UpdateEvent::Available(vec![big_release()]));
     press(&mut a, Btn::A);
     jobs.send(&mut a, UpdateEvent::Progress(4_000));
@@ -441,8 +466,8 @@ fn the_chip_hops_from_the_old_version_to_the_new_before_the_pins_clean() {
 
 #[test]
 fn the_sockets_are_labelled_old_then_new() {
-    let (_d, mut a, jobs) = on_about(true);
-    press(&mut a, Btn::X);
+    let (_d, mut a, jobs) = on_updates();
+    press(&mut a, Btn::A);
     jobs.send(&mut a, UpdateEvent::Available(vec![release()]));
     let running = Build::current().version;
     assert_eq!(
@@ -463,8 +488,8 @@ fn baseos() -> Release {
 }
 
 fn offered_both() -> (TempDir, App, FakeJobs) {
-    let (d, mut a, jobs) = on_about(true);
-    press(&mut a, Btn::X);
+    let (d, mut a, jobs) = on_updates();
+    press(&mut a, Btn::A);
     jobs.send(
         &mut a,
         UpdateEvent::Available(vec![big_release(), baseos()]),
@@ -497,10 +522,10 @@ fn a_installs_only_the_chosen_cart() {
 
 fn low_battery(d: &TempDir, a: &mut App) {
     let (power, _) =
-        common::panel_with_battery(d.path(), std::time::Duration::from_secs(300), 1, 5);
+        common::panel_with_battery(d.path(), std::time::Duration::from_secs(300), 1, 10);
     a.set_power(power);
     advance(a, 6_000);
-    assert_eq!(a.battery().map(|b| b.percent), Some(5));
+    assert_eq!(a.battery().map(|b| b.percent), Some(10));
 }
 
 #[test]
@@ -525,8 +550,7 @@ fn b_on_the_battery_warning_installs_nothing() {
     press(&mut a, Btn::Right);
     press(&mut a, Btn::A);
     press(&mut a, Btn::B);
-    assert!(!a.update_shown());
-    assert!(matches!(a.phase(), Phase::About));
+    assert!(on_updates_row(&a));
     assert_eq!(jobs.asked(), [UpdateJob::Check]);
 }
 
@@ -560,7 +584,7 @@ fn a_second_check_offers_both_again_from_slot() {
     let (_d, mut a, jobs) = offered_both();
     press(&mut a, Btn::Right);
     press(&mut a, Btn::B);
-    press(&mut a, Btn::X);
+    press(&mut a, Btn::A);
     jobs.send(
         &mut a,
         UpdateEvent::Available(vec![big_release(), baseos()]),
@@ -595,4 +619,62 @@ fn a_refused_baseos_update_shows_its_reason() {
             "geometry does not fit".to_string()
         ))
     );
+}
+
+#[test]
+fn b_while_downloading_cancels_and_goes_back_to_the_carts() {
+    let (_d, mut a, jobs) = offered_both();
+    press(&mut a, Btn::Right);
+    press(&mut a, Btn::A);
+    jobs.send(&mut a, UpdateEvent::Progress(4_000));
+    advance(&mut a, OPEN_MS + 100);
+    press(&mut a, Btn::B);
+    assert_eq!(jobs.cancels(), 1);
+    assert!(a.update_shown());
+    advance(&mut a, CLOSE_MS + 100);
+    assert_eq!(text(&a).unwrap().0, "Updates are available");
+    assert_eq!(a.update_chosen(), Some(Kind::BaseOs));
+    assert_eq!(
+        jobs.asked(),
+        [UpdateJob::Check, UpdateJob::Install(baseos())]
+    );
+}
+
+#[test]
+fn a_cancelled_download_never_shows_a_failure() {
+    let (_d, mut a, jobs) = offered_both();
+    press(&mut a, Btn::A);
+    advance(&mut a, OPEN_MS + 100);
+    press(&mut a, Btn::B);
+    jobs.send(&mut a, UpdateEvent::Cancelled);
+    advance(&mut a, CLOSE_MS + 100);
+    assert_eq!(text(&a).unwrap().0, "Updates are available");
+    assert_eq!(a.update_chosen(), Some(Kind::Slot));
+}
+
+#[test]
+fn b_after_the_download_is_committed_keeps_installing() {
+    let (_d, mut a, jobs) = offered_both();
+    press(&mut a, Btn::A);
+    advance(&mut a, OPEN_MS + 100);
+    jobs.commit();
+    press(&mut a, Btn::B);
+    assert_eq!(jobs.cancels(), 1);
+    advance(&mut a, CLOSE_MS + 100);
+    assert!(a.update_progress().is_some());
+    jobs.send(&mut a, UpdateEvent::Staged);
+    assert_eq!(a.update_progress(), Some(1.0));
+}
+
+#[test]
+fn a_second_install_after_a_cancel_starts_a_fresh_download() {
+    let (_d, mut a, jobs) = offered_both();
+    press(&mut a, Btn::A);
+    advance(&mut a, OPEN_MS + 100);
+    press(&mut a, Btn::B);
+    advance(&mut a, CLOSE_MS + 100);
+    press(&mut a, Btn::A);
+    assert_eq!(a.update_progress(), Some(0.0));
+    jobs.send(&mut a, UpdateEvent::Cancelled);
+    assert_eq!(a.update_progress(), Some(0.0));
 }
