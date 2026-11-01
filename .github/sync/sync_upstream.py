@@ -82,52 +82,30 @@ CHECKS = [
     ("clippy", "`sync_upstream.py fork-clippy`: builds everything, lints the fork's own files", True),
     ("clippy_device", "`sync_upstream.py fork-clippy device`: the same for the device build", True),
     ("device", "`cargo build --profile device -p slot --no-default-features --features device`", True),
-    ("fork_tests", "`sync_upstream.py fork-tests`: the fork's Fit tests (FORK-NOTES.md section 4)", True),
+    ("fork_tests", "`sync_upstream.py fork-tests`: the fork's Shimmerless Grid tests (FORK-NOTES.md section 4)", True),
     ("tests", "`cargo test --workspace --no-fail-fast --lib --bins --tests` (advisory: some tests need cores the runner lacks)", False),
 ]
 
-# The fork's Fit tests: (package, test target or "lib", needs macOS, test names). A sync must keep
+# The fork's Shimmerless Grid tests: (package, test target or "lib", needs macOS, test names). A sync must keep
 # every one of them and keep it passing, so a merge cannot drop or disable one unnoticed. Kept here,
 # under .github/, because the agent may not edit it. FORK-NOTES.md section 4 lists what each checks.
 FORK_TESTS = [
-    ("slot-gfx", "lib", False, [
-        "fit::tests::the_fit_patches_apply_to_upstreams_game_shader",
-        "fit::tests::the_other_modes_skip_the_softening_with_a_branch",
-        "fit::tests::a_shader_the_patches_do_not_fit_is_left_as_upstream_wrote_it",
+    ("slot-gfx", "fit_shimmerless_grid_shader", False, [
+        "shimmerless_grid_is_the_first_branch_and_matches_only_its_effect",
     ]),
-    ("slot", "lib", False, [
-        "fit::tests::the_crop_and_the_fitted_check_agree",
+    ("slot", "fit_shimmerless_grid_menu", False, [
+        "the_game_boy_shader_rows_step_to_shimmerless_grid_after_shimmerless_and_wrap_to_off",
+        "the_gba_shader_row_never_offers_shimmerless_grid",
+        "shimmerless_grid_is_saved_by_name_and_read_back",
+        "a_gba_shader_saved_as_shimmerless_grid_falls_back_to_the_default",
+        "the_shader_shortcut_reaches_shimmerless_grid_on_a_game_boy_color_game",
     ]),
-    ("slot", "fit_app", False, [
-        "l_and_r_change_the_mode_on_a_game_boy_cart_and_not_on_a_gba_one",
-        "the_picture_mode_is_remembered_per_cart",
-        "only_the_fitted_picture_is_softened",
-        "the_fitted_picture_keeps_its_bezel_and_the_stretched_one_drops_it",
-        "a_gba_cart_saved_as_fit_still_shows_the_whole_picture",
-        "nothing_counts_as_fitted_once_the_cart_is_out",
-    ]),
-    ("slot", "fit_softening", False, [
-        "a_game_boy_color_cart_is_softened_only_while_fitted",
-        "game_boy_and_game_boy_color_carts_fit_and_soften_alike",
-    ]),
-    ("slot-ui", "fit_bezel", False, [
-        "the_fit_bezels_fill_the_side_bars_and_only_shade_the_picture_edges",
-    ]),
-    ("slot-gfx", "fit_pipeline", True, [
+    ("slot-gfx", "fit_shimmerless_grid", True, [
+        "shimmerless_grid_in_fit_blends_only_neighbouring_game_pixels_and_stays_sharp",
         "the_fitted_picture_fills_the_height_with_bars_only_at_the_sides",
-        "softening_gives_every_fitted_game_boy_row_the_same_weight",
-        "the_fitted_grid_lines_every_game_pixel_as_in_the_other_modes",
-        "a_screenshot_is_never_softened_even_after_a_fitted_game",
-    ]),
-    ("slot-gfx", "fit_colour", True, [
-        "softened_colour_rows_stay_even_in_every_channel_without_fringes",
-        "softened_colour_columns_stay_even_in_every_channel_without_fringes",
-    ]),
-    ("slot", "fit_render_bezel", True, [
-        "the_default_bezel_in_fit_mode_lights_the_power_lamp_and_labels_the_right_bar",
-        "a_bezel_from_the_card_shows_at_actual_size_and_stays_off_the_fitted_picture",
-        "a_fitted_picture_never_reads_the_card_bezel_it_hides",
-        "stepping_through_stretch_never_reads_the_hidden_card_bezel",
+        "the_fitted_shimmerless_grid_lines_every_game_pixel_evenly",
+        "shimmerless_grid_gives_every_fitted_row_the_same_weight",
+        "shimmerless_grid_at_a_whole_scale_does_not_blend",
     ]),
 ]
 
@@ -153,11 +131,15 @@ Rules, in priority order:
    upstream's version and say so in your notes.
 4. Code must read like the surrounding code. Do not add comments about the merge.
 
-Where the fork's code lives: all of it is in the fork's own files, `crates/*/src/fit*.rs` and
-`crates/*/tests/fit*.rs`, which upstream does not have. Upstream's files only carry small hooks
-that call into them, listed in FORK-NOTES.md section 3. So in an upstream file:
-- Take upstream's version of the file and re-add each hook the fork had there. Never copy fork
-  logic into an upstream file; if a hook no longer fits, change the code in the `fit*.rs` file.
+Where the fork's code lives: the fork adds one shader, Shimmerless Grid. Its code is a set of
+small hooks in upstream's files, all listed in FORK-NOTES.md section 3: one more variant, list
+entry or `match` arm next to each `Shimmerless` one, and one shader branch in
+`crates/slot-gfx/src/shaders.rs` (the `abs(u_mode - 6.0) < 0.5` branch, first after
+`if (!inside)`). Its tests are in the fork's own files, `crates/*/tests/fit*.rs`, which upstream
+does not have. So in an upstream file:
+- Take upstream's version of the file and re-add each hook the fork had there, exactly as
+  FORK-NOTES.md section 3 describes it. Never drop the Shimmerless Grid shader branch: it is the
+  fork's feature, not a leftover. Never add fork logic beyond those hooks.
 - Never reformat or lint-fix upstream's code, even where rustfmt or clippy would. Upstream's
   formatting is kept exactly, so the next sync does not conflict over it.
 
@@ -174,10 +156,12 @@ When the markers are gone, run these and fix what fails, also in files that did 
    in the fork's own files. Lints it reports in upstream's code are upstream's; leave them.
 3. `python3 .github/sync/sync_upstream.py fork-clippy device`: the same for the device build.
 4. `cargo build --profile device --target-dir target-device -p slot --no-default-features --features device`
-5. `python3 .github/sync/sync_upstream.py fork-tests`: the fork's Fit tests. Every one must exist
-   and pass. If `fit::tests::the_fit_patches_apply_to_upstreams_game_shader` fails, upstream
-   changed its game shader where the fork patches it: update `PATCHES` in
-   `crates/slot-gfx/src/fit.rs` to upstream's new text, keeping what the fork's text does.
+5. `python3 .github/sync/sync_upstream.py fork-tests`: the fork's Shimmerless Grid tests. Every
+   one must exist and pass. Shimmerless Grid is the `abs(u_mode - 6.0) < 0.5` branch of `GAME_FRAG`
+   in `crates/slot-gfx/src/shaders.rs`, first after `if (!inside)`, with its own copy of the
+   Shimmerless and Grid code: leave it as it is when upstream changes Shimmerless or Grid. If
+   upstream added a shader of its own, keep theirs below ours, keep `ShimmerlessGrid` last in
+   every enum and list, and change ours to its new index (`abs(u_mode - 7.0) < 0.5` for 7).
 6. `cargo test -p <crate> --lib --tests` for the crates you changed. A test that fails because a
    libretro core, a BIOS or a display is missing on this machine is not your concern; mention it
    in the notes.
@@ -464,7 +448,7 @@ def finish():
 
 
 def fork_tests():
-    """Run the fork's Fit tests by name and fail unless every one of them ran and passed."""
+    """Run the fork's Shimmerless Grid tests by name and fail unless every one of them ran and passed."""
     on_mac = sys.platform == "darwin"
     failed = []
     for package, target, mac_only, names in FORK_TESTS:

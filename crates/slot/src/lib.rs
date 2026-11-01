@@ -29,7 +29,6 @@ pub mod emu;
 pub mod face_builder;
 pub mod fetch_art;
 pub mod fetch_faces;
-pub mod fit;
 pub mod frames;
 pub mod frontend;
 pub mod input;

@@ -2463,10 +2463,6 @@ impl App {
         }
     }
 
-    pub fn picture_mode(&self) -> (Platform, VideoMode) {
-        (self.platform, self.video_mode)
-    }
-
     fn slot_owns_the_shoulders(&self) -> bool {
         matches!(self.phase, Phase::Playing { .. }) && self.platform.hardware() != Platform::Gba
     }
@@ -3418,12 +3414,12 @@ impl App {
                 Action::GbaDown(Btn::L1)
                     if self.slot_owns_the_shoulders() && !self.bound_to_game(Btn::L1) =>
                 {
-                    self.set_picture(self.video_mode.bigger())
+                    self.set_picture(VideoMode::Stretch)
                 }
                 Action::GbaDown(Btn::R1)
                     if self.slot_owns_the_shoulders() && !self.bound_to_game(Btn::R1) =>
                 {
-                    self.set_picture(self.video_mode.smaller())
+                    self.set_picture(VideoMode::Actual)
                 }
                 Action::Eject => self.eject(),
                 Action::GameMenu => self.game_menu_shortcut(),
@@ -4015,6 +4011,7 @@ impl App {
             Shader::Dot => Toast::ShaderDot,
             Shader::Simpletex => Toast::ShaderSimpletex,
             Shader::Shimmerless => Toast::ShaderShimmerless,
+            Shader::ShimmerlessGrid => Toast::ShaderShimmerlessGrid,
         };
         self.persist();
         self.hud.toast(said, self.now());
@@ -10189,6 +10186,7 @@ fn shader_value(shader: Shader) -> QuickValue {
         Shader::Dot => QuickValue::Dot,
         Shader::Simpletex => QuickValue::Simpletex,
         Shader::Shimmerless => QuickValue::Shimmerless,
+        Shader::ShimmerlessGrid => QuickValue::ShimmerlessGrid,
     }
 }
 

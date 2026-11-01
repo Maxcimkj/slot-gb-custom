@@ -60,74 +60,52 @@ please [open an issue on GitHub](https://github.com/BrandonKowalski/slot/issues)
 # What does this fork bring?
 
 This is [slot-gb-custom](https://github.com/Maxcimkj/slot-gb-custom), a fork of
-[slot](https://github.com/BrandonKowalski/slot) with one addition: a **Fit** picture mode for
+[slot](https://github.com/BrandonKowalski/slot) with one addition: a **Shimmerless Grid** shader for
 Game Boy and Game Boy Color games.
 
-## Fit mode for GB and GBC
+## Shimmerless Grid
 
-slot shows GB and GBC games in two modes: **Actual** (exact 3x, with the bezel) and **Stretch**
-(full width, no bezel).
+slot's **Fit** scale (Settings → Screen → Game Boy → Scale) fills the screen height at the Game
+Boy's own 10:9 shape: about 533x480 on the RG SP, 3.33 screen pixels per game pixel. At that
+size slot offers two shaders that each fix half of the picture:
+
+- **Shimmerless** blends only where two game pixels meet, so every row and column is the same
+  size and nothing shimmers when the game scrolls. But the pixels are not outlined.
+- **Grid** outlines every game pixel. But plain 3.33x scaling makes rows alternate between 3 and
+  4 screen pixels.
 
 > [!IMPORTANT]
-> **The fork adds Fit between them.** Fit fills the whole screen height and keeps the Game Boy's
-> own 10:9 shape, so the picture is about 533x480 with a bar on each side.
+> **The fork adds Shimmerless Grid, both at once:** Shimmerless's even pixels with Grid's lines over
+> them. Pick it under Settings → Screen → Game Boy (or Game Boy Color) → Shader, or step to it
+> in game with <kbd>SELECT</kbd> + <kbd>A</kbd> / <kbd>SELECT</kbd> + <kbd>B</kbd>.
 
-- **L1** steps bigger: Actual → Fit → Stretch.
-- **R1** steps smaller: Stretch → Fit → Actual.
-- The mode is saved per game, like slot's other picture modes.
-- The side bars get a Fit version of the built-in Game Boy and Game Boy Color bezels.
-- Fit is softened with a sharp-bilinear filter. At 3.33x, plain nearest-neighbour scaling makes
-  rows alternate between 3 and 4 pixels tall, which shows as shimmer when the game scrolls.
-- Every screen effect works in Fit as in slot's other modes. The Grid effect draws a line on every
-  game pixel's edge, just as in Stretch, so the pixels stay visible.
-- Everything else is slot as it is: Actual, Stretch, GBA games (which have no Fit) and screenshots
-  in the album look and behave exactly as in slot.
+- It comes after Shimmerless in the Game Boy and Game Boy Color shader lists and is saved like
+  any other shader (`shader_gb=shimmerless-grid` in `Config/slot.state`).
+- At a whole scale (Integer, SP Screen) there is nothing to smooth, and it looks exactly like Grid.
+- GBA games do not offer it: their picture is always a whole 3x.
+- Everything else is slot as it is, including the other shaders, Fit, its bezels and screenshots.
 
-### Fit with bezels
-
-The side bars hold Fit versions of the built-in bezels: Game Boy (left) and Game Boy Color
-(right). They use the same grey body, black screen frame and inner shadow on the picture's edge
-as the Actual bezels, so the full-height picture looks set in the same screen. The lamp and its
-label sit at the same height as on the Actual bezel; the console's name runs up the right bar.
-
-Bezels from the card (`Bezels/GB`, `Bezels/GBC`) are drawn for the Actual picture and would
-cover a fitted one, so Fit hides them; they show again in Actual.
-
-<p align="center">
-<img src=".github/resources/fork/fit-gb.png" width="48%" alt="Fit mode on a Game Boy game, with the Fit bezel's battery lamp and GAME BOY label in the side bars">
-<img src=".github/resources/fork/fit-gbc.png" width="48%" alt="Fit mode on a Game Boy Color game, with the Fit bezel's power lamp and GAME BOY COLOR label in the side bars">
-</p>
-
-### Fit softened
-
-In each picture, the left side is hard pixels at 3.33x and the right side is the softened Fit
-picture: every row ends up the same height.
-
-<p align="center">
-<img src=".github/resources/fork/fit-softening.png" width="96.5%" alt="Left: hard pixels at 3.33x with uneven rows. Right: the softened Fit picture with even rows">
-</p>
-
-<p align="center">
-<img src=".github/resources/fork/fit-softening-zoom.png" width="60%" alt="Close-up of the same comparison: uneven rows on the left, even rows on the right">
-</p>
-
-### Screen sizes
-
-Fit is designed for 3:2 panels such as the RG SP (720x480), where the side bars are about 93 px
-wide. On 4:3 panels it still works, but thin bars stay at the top and bottom.
+> [!NOTE]
+> **Upgrading from a fork release with the old Fit mode** (`v1.12.0-gp-custom.3` or older, or
+> `v1.13.0-gp-custom.1`)? The
+> fork's own per-game Fit mode is gone: slot's Fit scale replaces it. Games you had switched to
+> Fit with L1 now open at Actual size. Set Settings → Screen → Game Boy (and Game Boy Color) →
+> Scale to **Fit** once, and every game of that console is fitted. L1/R1 still switch a game
+> between that and Stretch.
 
 ## Always on the newest slot
 
 The fork keeps up with upstream on its own. Once a week, a workflow merges any new slot changes
-into the fork, re-applies Fit on top, runs the build and the fork's tests, and publishes a new
-fork release, so the fork stays on the newest slot version.
+into the fork, re-applies Shimmerless Grid on top, runs the build and the fork's tests, and publishes
+a new fork release, so the fork stays on the newest slot version.
 
-To keep those merges easy, all of Fit lives in the fork's own `fit*.rs` files. slot's files stay
-exactly as slot wrote them, apart from a few one-line hooks into Fit, so new slot versions merge
-in without touching the fork's code. [`FORK-NOTES.md`](FORK-NOTES.md) lists every hook.
+To keep those merges easy, Shimmerless Grid is one more branch in slot's shader, written next to
+Shimmerless and Grid with its own copy of their code, so changes slot makes to those two never
+change it. slot's other files stay exactly as slot wrote them, apart from one-line hooks that add
+the new choice next to Shimmerless. [`FORK-NOTES.md`](FORK-NOTES.md) lists every hook.
 
-Fork releases are tagged `v<slot version>-gp-custom.<n>`, for example `v1.9.0-gp-custom.1` is
-slot 1.9.0 plus Fit. Their release notes are slot's.
+Fork releases are tagged `v<slot version>-gp-custom.<n>`, for example `v1.13.0-gp-custom.2` is
+slot 1.13.0 plus Shimmerless Grid. Their release notes are slot's.
 
 > [!IMPORTANT]
 > **Download the latest fork release from the
