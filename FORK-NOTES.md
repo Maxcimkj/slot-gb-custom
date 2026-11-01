@@ -9,24 +9,16 @@ that produced it. Read this before resolving a conflict.
 - **Upstream:** `BrandonKowalski/slot`, branch `main`. slot is a Rust frontend for Anbernic H700
   handhelds (RG SP, RG34XX, RG35XX family, RG28XX, RG40XX, CubeXX) that plays GB, GBC and GBA
   games through the mGBA and gpSP libretro cores.
-- **Purpose:** carry one feature upstream does not have, a **Fit** picture mode for GB/GBC games,
-  plus its bezel art, and publish device zips from the fork. The target device is the RG SP
-  (720x480 panel, the same size as slot's canvas).
-- **Base:** the fork started from upstream `e5b12ad Add RG35XX-H to the device list, closes #98`
-  (after `v1.7.0`). Five upstream syncs have been merged since; the newest upstream in `main` is
-  `20703ed v1.9.0 CHANGELOG.md` (sync pull request #6, 2026-10-23). `rebase-log.md` has every
-  sync. Fork releases are tagged `v<upstream version>-gp-custom[.N]`; the newest is
-  `v1.9.0-gp-custom.2` on `8575439`.
-- **Fork commits on `main`** (everything else in `--first-parent main` is a sync merge):
-
-  | Commit | What |
-  |---|---|
-  | `0b46d92` | The Fit mode, its bezel art and tests (section 3) |
-  | `4df38b7` | First upstream merge, by hand, plus the automatic sync workflow and two more Fit test files |
-  | `c59df76` (PR #7) | `release.yml` takes the notes for `-gp-custom` tags from the upstream version's section (section 5) |
-  | `8575439` | `README.md` becomes the fork's own, with Fit screenshots; the sync always keeps it |
-  | `35cbb3f` (PR #8) | Fit bezels in the Actual bezels' style (`tools/fit_bezel/` builds them); all fork code moved into `fit*.rs` files, upstream files keep only hooks and upstream's own formatting (section 3); screenshots never softened |
-  | the commit that adds this row | The Grid effect in Fit is upstream's again, one line per game pixel as in Stretch; PR #8 had given it two cells per game pixel, which hid the pixels. The softening is an `if` on a uniform, so the other modes skip it. Fit counts only with a seated cart of the core's platform, Stretch keeps the cached bezel, and the crop uses the same check as everything else |
+- **Purpose:** keep everything from upstream and add one GB/GBC shader upstream does not have,
+  **Shimmerless Grid**: upstream's Shimmerless smoothing and upstream's Grid lines in one pass. Publish
+  device zips from the fork. The target device is the RG SP (720x480 panel), with Settings →
+  Screen → Game Boy → Scale set to upstream's Fit.
+- **History:** the fork started (after upstream `v1.7.0`) by adding its own Fit picture mode,
+  sharp-bilinear softening and Fit bezel art. Upstream later shipped all of that itself: the Fit
+  scale (`103aa7d`), Fit bezels (`d2edb86`), per-Scale card bezels (`5903cf4`) and the
+  Shimmerless shader (`ded7ba2`), which is the same smoothing. The fork then dropped its Fit
+  (branch `smooth-grid-filter`) and kept only what upstream lacks: smoothing and grid together.
+  `rebase-log.md` has every sync. Fork releases are tagged `v<upstream version>-gp-custom.<n>`.
 - **Sync model:** upstream `main` is merged into the fork's `main` through a pull request, the
   way GitHub's Sync fork → Open pull request does it; history is never rewritten. A coding agent
   resolves the pull request, and the workflow merges it once every required check passes.
@@ -46,7 +38,7 @@ that produced it. Read this before resolving a conflict.
      version whatever upstream did to it (`readme_for_fork`), so README conflicts never reach it.
   3. `verify` refuses the result if conflict markers remain or protected files changed. The
      workflow then runs the checks itself: formatting and lints of the fork's own files, a clean
-     build (host and device), the device build and the fork's Fit tests by name (section 4) are
+     build (host and device), the device build and the fork's Shimmerless Grid tests by name (section 4) are
      required; the full `cargo test` is advisory because some tests need cores the runner does
      not have.
   4. `finish` commits the merge with a record in `rebase-log.md` (upstream commits, fork commits,
@@ -76,21 +68,12 @@ that produced it. Read this before resolving a conflict.
 |---|---|
 | `FORK-NOTES.md` | This file |
 | `README.md` | The fork's README. Upstream has a file with this name, but the sync always keeps the fork's version (section 1, step 2), so it never conflicts |
-| `.github/resources/fork/` | Fit screenshots used by `README.md` |
 | `RELEASE.md` | How release zips are built and named. Kept out of `README.md` on purpose so syncs never touch it |
 | `rebase-log.md` | One record per automatic upstream sync, newest first, written by the sync workflow |
 | `.github/workflows/sync-upstream.yml`, `.github/sync/sync_upstream.py` | The automatic upstream sync pull request, resolved by the OpenCode agent (section 1) |
-| `assets/bezel_gb_fit.png`, `assets/bezel_gbc_fit.png` | Built-in Fit bezel art, compiled in |
-| `tools/fit_bezel/` | `make_fit_bezels.py` rebuilds the Fit bezel art from the Actual bezels; `label_gb(c).png` are the right-bar labels it places |
-| `crates/slot/src/fit.rs` | The Fit mode: `bigger()`/`smaller()` stepping, the Fit crop, which pictures are fitted and softened (`fits_picture`, `softens_picture`), the bezel cache key, and the bezel over a fitted picture |
-| `crates/slot-ui/src/fit_bezel.rs` | `fit_game_bezel_face`: the built-in Fit bezel art |
-| `crates/slot-gfx/src/fit.rs` | The shader side: `game_frag` patches upstream's `GAME_FRAG` with the softening, and `Soft` holds the `u_soft` uniform. Its unit tests check the patch still applies and that a shader it does not fit is left as upstream wrote it |
-| `crates/slot/tests/fit_app.rs` | The Fit mode as the app sees it, including the fork's versions of upstream's two L1/R1 tests |
-| `crates/slot/tests/fit_softening.rs` | GBC carts fit and soften exactly like GB carts, softened only while fitted |
-| `crates/slot/tests/fit_render_bezel.rs` | Full-frame render of the Fit bezel and of a card bezel in Fit (macOS only) |
-| `crates/slot-ui/tests/fit_bezel.rs` | Fit bezel PNGs fill the side bars and only shade the picture's edges |
-| `crates/slot-gfx/tests/fit_pipeline.rs` | The fitted picture through the real shader: full height, even rows, upstream's grid, screenshots unsoftened (macOS only) |
-| `crates/slot-gfx/tests/fit_colour.rs` | Softening colour stripes: every channel even, edges only mix the two colours (macOS only) |
+| `crates/slot-gfx/tests/fit_shimmerless_grid_shader.rs` | Reads `src/shaders.rs` as text: the Shimmerless Grid branch is still first in the chain, at `ScreenEffect::ShimmerlessGrid`'s number (any machine) |
+| `crates/slot-gfx/tests/fit_shimmerless_grid.rs` | Shimmerless Grid through the real shader, against fixed expectations (no other filter is rendered): full height in Fit, even lines and rows, sharp blends only, no blending at a whole scale (macOS only) |
+| `crates/slot/tests/fit_shimmerless_grid_menu.rs` | Shimmerless Grid in the GB/GBC Shader rows and the shader shortcut, saved and read back, never offered for GBA |
 
 **Rule: every fork Rust file is named `fit*.rs`** (`crates/*/src/fit*.rs`, `crates/*/tests/fit*.rs`).
 The sync formats and lints exactly those files (`FORK_RUST` in `sync_upstream.py`), so a new fork
@@ -100,58 +83,47 @@ file outside that pattern would go unchecked. Fork logic goes in these files, ne
 keeps the fork's version and records that in `rebase-log.md`. It keeps upstream's top part (banner,
 What is slot?, What does it look like?, Supported Devices) plus the fork's own section, and points
 to upstream's README for the full documentation. If upstream's top part changes in a way that
-matters (a new device, new screenshots), copy it over by hand. Do not edit `CHANGELOG.md` in the
-fork. If upstream adds a file with one of the other names above, rename ours, not theirs.
+matters (a new device, new screenshots), copy it over by hand. Do not edit `CHANGELOG.md` or
+`site/` in the fork: Shimmerless Grid is documented in `README.md` only. If upstream adds a file with
+one of the other names above, rename ours, not theirs.
 
 ## 3. Fork changes to upstream files (conflict hotspots)
 
-The feature started as `0b46d92 Add new fit mode for gb, gbc and bezels` (the tag
-`v1.7.0-gp-custom` points to `16c72c7`, an earlier version of it, see section 6). Since then all
-of its code has moved into the fork's own `fit*.rs` files (section 2). Upstream files carry only
-the hooks below, and otherwise are byte for byte upstream's, formatting included.
+Upstream files carry only the hooks below and are otherwise byte for byte upstream's, formatting
+included. `git diff upstream/main main -- crates/` shows exactly these plus the `fit*.rs` test files.
 
 ### The feature in one paragraph
 
-GB/GBC games had two modes, Actual (exact 3x, 480x432, bezel shown) and Stretch (720x432, bezel
-hidden). The fork adds **Fit** between them: full 480 px height at the Game Boy's own 10:9 shape,
-about 533x480, with black bars of ~93 px left and right. L1 steps bigger (Actual → Fit → Stretch,
-stops at Stretch), R1 steps smaller (Stretch → Fit → Actual, stops at Actual). The mode is saved
-per game in `Config/video_mode.txt` as `<rom stem> = fit`. Fit is the only softened mode, using
-sharp bilinear, because 3.33x nearest-neighbour makes rows alternate between 3 and 4 lines. Screen
-effects, Grid included, are upstream's in Fit too: Grid draws a line on every game pixel's edge, as
-in Stretch, whose rows are also 3.33x. (Two cells per game pixel were tried: the lines came out
-even, but half of them ran through the pixels and the pixels could no longer be told apart.) GBA
-has no Fit and is never affected, even with `fit` saved for a GBA game.
+Upstream's Fit scale shows a Game Boy picture at about 3.33x (533x480 on the RG SP). Its Grid
+shader draws a line on every game pixel's edge but samples nearest-neighbour, so rows alternate
+between 3 and 4 screen lines; its Shimmerless shader blends only across each edge, so every row
+is even, but draws no lines. **Shimmerless Grid** runs Shimmerless's sampling and then Grid's darkening
+in one branch of upstream's game shader. At a whole scale Shimmerless changes nothing, so Shimmerless
+Grid there is exactly Grid. It is offered for GB and GBC (after Shimmerless) and saved as
+`shimmerless-grid` in `shader_gb=` / `shader_gbc=`; GBA never offers it, and a GBA `shimmerless-grid`
+falls back to upstream's default like any unknown value.
 
 ### The hooks in upstream files
 
-`git diff <upstream> main -- crates/` shows exactly these. When an upstream file conflicts, take
-upstream's version and re-add its hooks; if one no longer fits, change the `fit*.rs` file it calls.
+Every hook is written the way upstream wrote `Shimmerless` next to it. When an upstream file
+conflicts, take upstream's version and re-add its hooks.
 
-| File | Hook | Calls |
-|---|---|---|
-| `crates/slot/src/lib.rs` | `pub mod fit;` | — |
-| `crates/slot/src/video_mode.rs` | `Fit` variant between `Actual` and `Stretch`; `"fit"` arms in `as_str` and `parse`; first lines of `source_rect`: `if let Some(rect) = crate::fit::source_rect(platform, mode) { return rect; }` | `fit::source_rect` returns `None` for every other mode and for GBA, so upstream's own code handles those |
-| `crates/slot/src/app.rs` | `picture_mode()` next to `source_rect()`: a getter for the private `platform` and `video_mode`, which the core was opened with; L1 → `set_picture(self.video_mode.bigger())`, R1 → `set_picture(self.video_mode.smaller())` | `bigger`/`smaller` are an `impl VideoMode` in `fit.rs`; `fits_picture` and `softens_picture` an `impl App` there, built on `picture_mode()` and the seated cart, so nothing counts as fitted without a cart of that platform in the slot |
-| `crates/slot/src/frontend.rs` | `BezelSync.image` key gains `bool` (fitted); `let shown = crate::fit::bezel_key(app, (platform, pick, (w, h)), state.image.as_ref());`; the bezel `match`'s first arm `_ if shown.3 => crate::fit::game_bezel(platform, &shown.1, w, h),`, so a fitted picture never loads the card bezel it hides; in `compose()`, after `set_game_source_rect`: `compositor.set_soft_picture(self.session.app().softens_picture());` | `fit::bezel_key` keeps the cached bezel while stretched (Stretch shows none), so Fit → Stretch → Fit loads nothing; `fit::game_bezel` |
-| `crates/slot-ui/src/lib.rs` | `mod fit_bezel;` and `pub use fit_bezel::fit_game_bezel_face;` | — |
-| `crates/slot-gfx/src/lib.rs` | `mod fit;` | — |
-| `crates/slot-gfx/src/pipeline.rs` | `GamePass` field `pub(crate) soft: crate::fit::Soft`, set to `crate::fit::Soft::new(prog)`; the program is built from `&crate::fit::game_frag(GAME_FRAG)`; `self.soft.upload(tex == self.game);` after the `u_mode` uniform in `draw_source`: only the live game is softened, never a still (a screenshot) | `fit::game_frag`, `fit::Soft` |
-| `crates/slot-gfx/src/fbo.rs` | `Compositor::set_soft_picture(on)` → `self.game.soft.set(on)`, before `set_game_source_rect` | — |
-| `crates/slot/tests/app.rs` | Upstream's `l_and_r_change_the_mode_on_a_game_boy_cart_and_not_on_a_gba_one` and `the_picture_mode_is_remembered_per_cart`, and the `GB_WINDOW` constant only they used, are removed: they expect two modes. The fork's versions are in `fit_app.rs` | — |
-| `site/docs/tour.md`, `site/docs/guide/controls.md`, `site/docs/guide/screen.md` | One line each describing L1/R1: L1 goes to full height first, then stretched; R1 steps back; bezels are hidden only while stretched | Take upstream's markup, re-apply the wording |
+| File | Hook |
+|---|---|
+| `crates/slot-store/src/slot_state.rs` | `ShimmerlessGrid` last in `enum Shader`; last in `Shader::GB` (array length + 1); `Shader::ShimmerlessGrid => "shimmerless-grid"` in `name()`; last in `parse()`'s list. `Shader::GBA` unchanged |
+| `crates/slot-gfx/src/lcd3x.rs` | `ShimmerlessGrid` last in `enum ScreenEffect` (its `mode()` is its index, 6, which the shader branch below tests for) |
+| `crates/slot-gfx/src/shaders.rs` | In `GAME_FRAG`, the first branch after `if (!inside) {\n    }`: `} else if (abs(u_mode - 6.0) < 0.5) {` (exactly mode 6, so it can never catch a mode upstream adds) holding its own copy of the Shimmerless code (as in the `u_mode > 4.5` branch) followed by its own copy of the Grid code (as in the `u_mode > 1.5` branch), sharing Shimmerless's `hp` |
+| `crates/slot/src/frontend.rs` | in `compose()`'s shader `match`: `slot_store::Shader::ShimmerlessGrid => ScreenEffect::ShimmerlessGrid,` |
+| `crates/slot/src/app.rs` | the shader toast `match`: `Shader::ShimmerlessGrid => Toast::ShaderShimmerlessGrid,`; the quick menu value `match`: `Shader::ShimmerlessGrid => QuickValue::ShimmerlessGrid,` |
+| `crates/slot-ui/src/toast.rs` | `ShaderShimmerlessGrid` after `ShaderShimmerless` in the enum and in `FIXED` (array length + 1); text `"Shader: Shimmerless Grid"` |
+| `crates/slot-ui/src/quick_menu.rs` | `ShimmerlessGrid` after `Shimmerless` in `enum QuickValue` and in `ALL` (array length + 1); text `"Shimmerless Grid"` |
+| `crates/slot-ui/tests/quick_menu.rs`, `crates/slot-ui/tests/toast.rs` | `"Shimmerless Grid"` / `Toast::ShaderShimmerlessGrid` after Shimmerless's entry in the lists these upstream tests spell out in full; in `toast.rs`'s `the_banner_says_what_happened_and_never_what_is_on_screen` the fixed-banner count (`all[..N]`, `all[N..N + palettes]`, `all[N + palettes..]`) is upstream's plus one |
+| `crates/slot-gfx/tests/pipeline.rs` | `#![cfg(target_os = "macos")]` at the top: it uses `HeadlessSurface`, which only exists on macOS, and the sync runner is Linux |
 
-`crates/slot-gfx/src/shaders.rs` has no fork change: `fit::game_frag` patches upstream's shader
-text when the program is built, at two anchors (`PATCHES`): after `varying vec2 v_uv;` it adds
-`u_soft` and `soft_texel`, and the first sample becomes
-`vec3 c; if (u_soft > 0.5) { c = soft_texel(uv); } else { c = texture2D(u_game, uv).rgb; }`.
-It is an `if`, not a `? :`: the flag is the same for every pixel of a frame, so Actual, Stretch,
-GBA and screenshots take only upstream's single fetch, while a driver may flatten a ternary and
-run `soft_texel`'s four fetches in every mode. Upstream's screen effects, Grid included, run on
-that sample unchanged. If an anchor is missing or not unique, slot logs it
-and runs upstream's shader unpatched: every mode works as upstream's, and Fit only loses its
-softening. `fit::tests::the_fit_patches_apply_to_upstreams_game_shader` then fails
-on any machine, so the sync catches it.
+Shimmerless Grid is written into upstream's shader like the other filters, so it reads like
+them and the program is built as upstream builds it. It has its own copy of the Shimmerless and
+Grid code, so it does not depend on those modes: when upstream changes Shimmerless or Grid,
+Shimmerless Grid stays as it is. Update it by hand only if you want an upstream improvement in it too.
 
 ### Other fork changes to upstream files
 
@@ -161,9 +133,7 @@ on any machine, so the sync catches it.
 | `.gitignore` | `/slot-v*/` and `/slot-v*-h700.zip` appended | Keep upstream's file, re-append the two lines |
 
 **Rule: never reformat or lint-fix upstream's code.** Upstream does not run `cargo fmt` or clippy
-in CI, and commits code they would change. The fork used to run `cargo fmt --all` and fix lints,
-which rewrote lines all over `app.rs`, `frontend.rs` and `lib.rs`, the files upstream edits most,
-and made every sync conflict there. Now only the fork's files are formatted and linted
+in CI, and commits code they would change. Only the fork's files are formatted and linted
 (section 4), and upstream's files stay exactly as upstream wrote them, so they merge cleanly
 unless upstream edits a hook's own lines.
 
@@ -171,33 +141,22 @@ unless upstream edits a hook's own lines.
 
 1. **Upstream wins.** Take upstream's version of the file and re-add the hooks from the table
    above. Never drop an upstream change to make a hook fit, and never move fork logic into an
-   upstream file: adapt the `fit*.rs` file instead.
+   upstream file beyond the hooks above.
 2. **Likely upstream changes and what to do:**
-   - *Upstream adds its own picture mode or changes `VideoMode`:* keep their variant, keep `Fit`,
-     and decide its place in `bigger()`/`smaller()` in `slot/src/fit.rs` (fit stays between
-     actual-size and stretched). Every `match` on `VideoMode` must cover `Fit`. If upstream adds a
-     mode that does what Fit does, drop the fork's version, keep `"fit"` parsing as an alias, and
-     say so in the PR.
-   - *Upstream changes the L1/R1 bindings or `slot_owns_the_shoulders`:* keep their guard and
-     binding, swap only the target to `bigger()`/`smaller()`.
-   - *Upstream adds a `BezelPick` variant:* nothing to do. `fit::game_bezel` hides every pick but
-     `Default` in Fit, since they are drawn for the Actual picture.
-   - *Upstream changes `GAME_FRAG`:* the shader merges cleanly; if the patch test fails, update
-     `PATCHES` in `slot-gfx/src/fit.rs` to upstream's new text. `soft_texel` depends on `u_src`,
-     `u_uv`, `u_rect` and `u_fbo` keeping their meaning.
-   - *Upstream changes `GamePass` or how it builds the program:* re-add the `soft` field, its
-     `Soft::new(prog)`, the `game_frag` wrap and the `upload()` call.
-   - *Upstream changes the texture size* (`SRC_W`/`SRC_H`, now 240x160) *or the canvas*
-     (`OUT_W`/`OUT_H`, now 720x480): the Fit rect is computed from them, but re-check the pixel
-     numbers in the tests (black at x 91 and 628, picture at 95 and 624) and the bar width the
-     bezel art assumes (x 0..93 and 627..720).
-   - *Upstream edits one of the two tests the fork removed from `app.rs`:* keep them removed and
-     carry upstream's new setup into the fork's versions in `fit_app.rs`.
-3. **Assumption to keep true:** Fit's side bars are the game texture's own black margins. The real
-   cores leave them black (`crates/slot/tests/render_picture_modes.rs` asserts it). The mock core
-   (`crates/slot-retro/src/mock.rs`) fills the whole texture, so never test "pixel in the bar is
-   black" against the mock.
-4. **Commit after resolving:** the resolution goes in the merge commit on the sync branch; fork
+   - *Upstream adds a shader* (a new `Shader`, `ScreenEffect`, `Toast`, `QuickValue` variant, or a
+     longer `Shader::GB`): keep theirs where they put it and put `ShimmerlessGrid` after it, last, in
+     every list and enum; bump each array length by one more. Upstream's new branch will usually be
+     `} else if (u_mode > 5.5) {` at the top of `GAME_FRAG`, right where ours starts: keep theirs
+     below ours and change ours to the new index (`abs(u_mode - 7.0) < 0.5` for index 7);
+     `shimmerless_grid_is_the_first_branch_and_matches_only_its_effect` reads the index from
+     `ScreenEffect::ShimmerlessGrid` and checks it. If a fork menu test
+     fails because the new shader now sits between Shimmerless and Shimmerless Grid, update only its
+     setup (the step sequence), not what it checks.
+   - *Upstream changes Shimmerless or Grid in `GAME_FRAG`:* take upstream's change to their
+     branches and leave the Shimmerless Grid branch as it is; it is independent of them.
+   - *Upstream adds a Shimmerless Grid of its own* (smoothing and grid together): drop the fork's, keep
+     `"shimmerless-grid"` parsing as an alias for theirs, and say so in the PR.
+3. **Commit after resolving:** the resolution goes in the merge commit on the sync branch; fork
    commits are never rewritten. The workflow adds the sync's record to `rebase-log.md` in that
    same commit. When fixing a sync pull request by hand, push to its `sync/upstream-<sha>`
    branch and update the record in the description.
@@ -208,7 +167,7 @@ unless upstream edits a hook's own lines.
 python3 .github/sync/sync_upstream.py fork-fmt --check   # rustfmt, the fork's fit*.rs files only
 python3 .github/sync/sync_upstream.py fork-clippy        # compile errors anywhere, lints in fit*.rs
 python3 .github/sync/sync_upstream.py fork-clippy device
-python3 .github/sync/sync_upstream.py fork-tests         # every Fit test by name
+python3 .github/sync/sync_upstream.py fork-tests         # every Shimmerless Grid test by name
 SLOT_SILENT=1 cargo test --workspace --no-fail-fast --lib --bins --tests
 ```
 
@@ -218,7 +177,7 @@ upstream's code but does not fail on them. The test run leaves out examples beca
 `examples/record.rs` only builds on macOS. A local device build is
 `task dist:device OUT=slot-<tag>` (see `RELEASE.md`).
 
-### Fit tests: what each one guards
+### Shimmerless Grid tests: what each one guards
 
 `python3 .github/sync/sync_upstream.py fork-tests` runs every test below by name and fails if any
 of them is missing or failing; the sync workflow requires it. Its list, `FORK_TESTS` in that
@@ -228,48 +187,28 @@ rendering. File paths are under `crates/`.
 
 | Feature | Tests |
 |---|---|
-| The fork's shader patch still applies to upstream's `GAME_FRAG` (any machine) | `slot-gfx/src/fit.rs` `fit::tests::the_fit_patches_apply_to_upstreams_game_shader` |
-| The softening is an `if` on `u_soft`, never a `? :`, so other modes skip its fetches (any machine) | `slot-gfx/src/fit.rs` `fit::tests::the_other_modes_skip_the_softening_with_a_branch` |
-| A shader the patch does not fit is used exactly as upstream wrote it, never a crash (any machine) | `slot-gfx/src/fit.rs` `fit::tests::a_shader_the_patches_do_not_fit_is_left_as_upstream_wrote_it` |
-| Screenshots are drawn as upstream draws them, even after a fitted game (macOS) | `slot-gfx/tests/fit_pipeline.rs` `a_screenshot_is_never_softened_even_after_a_fitted_game` |
-| A fitted picture never reads the card bezel it hides from the card (macOS) | `slot/tests/fit_render_bezel.rs` `a_fitted_picture_never_reads_the_card_bezel_it_hides` |
-| Fit between Actual and Stretch; L1 bigger, R1 smaller, stopping at both ends; GBA unaffected | `slot/tests/fit_app.rs` `l_and_r_change_the_mode_on_a_game_boy_cart_and_not_on_a_gba_one` |
-| Fit crop: full height at 10:9, `[12/240, 8/160, 216/240, 144/160]` | the same test, and `the_picture_mode_is_remembered_per_cart` |
-| `fit` saved per game and restored | `slot/tests/fit_app.rs` `the_picture_mode_is_remembered_per_cart` |
-| A GBA game saved as `fit` shows its whole picture, unsoftened | `slot/tests/fit_app.rs` `a_gba_cart_saved_as_fit_still_shows_the_whole_picture` |
-| Only Fit is softened (GB) | `slot/tests/fit_app.rs` `only_the_fitted_picture_is_softened` |
-| GBC fits and softens exactly like GB, softened only while fitted | `slot/tests/fit_softening.rs` `a_game_boy_color_cart_is_softened_only_while_fitted`, `game_boy_and_game_boy_color_carts_fit_and_soften_alike` |
-| Bezel kept in Fit, dropped in Stretch | `slot/tests/fit_app.rs` `the_fitted_picture_keeps_its_bezel_and_the_stretched_one_drops_it` |
-| Nothing counts as fitted or softened once the cart is out | `slot/tests/fit_app.rs` `nothing_counts_as_fitted_once_the_cart_is_out` |
-| The Fit crop and the fitted check agree for every platform and mode (any machine) | `slot/src/fit.rs` `fit::tests::the_crop_and_the_fitted_check_agree` |
-| Fit → Stretch → Fit never reads the hidden card bezel (macOS) | `slot/tests/fit_render_bezel.rs` `stepping_through_stretch_never_reads_the_hidden_card_bezel` |
-| Fit bezel art (GB and GBC) fills the side bars and only shades the picture's edges, with the Actual frame's shadow | `slot-ui/tests/fit_bezel.rs` `the_fit_bezels_fill_the_side_bars_and_only_shade_the_picture_edges` |
-| The fitted picture fills the height, black bars only at the sides (macOS) | `slot-gfx/tests/fit_pipeline.rs` `the_fitted_picture_fills_the_height_with_bars_only_at_the_sides` |
-| Sharp-bilinear softening gives every row the same weight (macOS) | `slot-gfx/tests/fit_pipeline.rs` `softening_gives_every_fitted_game_boy_row_the_same_weight` |
-| Grid in Fit is upstream's: identical with and without softening (within 1 per channel), one line per game pixel and none inside them (macOS) | `slot-gfx/tests/fit_pipeline.rs` `the_fitted_grid_lines_every_game_pixel_as_in_the_other_modes` |
-| Softening on colour stripes: every channel even, edges only mix the two colours (macOS) | `slot-gfx/tests/fit_colour.rs` `softened_colour_rows_stay_even_in_every_channel_without_fringes`, `softened_colour_columns_stay_even_in_every_channel_without_fringes` |
-| Default bezel in Fit drawn on screen, power lamp and label (macOS, GBC) | `slot/tests/fit_render_bezel.rs` `the_default_bezel_in_fit_mode_lights_the_power_lamp_and_labels_the_right_bar` |
-| A card bezel shows at Actual size and stays off the fitted picture (macOS) | `slot/tests/fit_render_bezel.rs` `a_bezel_from_the_card_shows_at_actual_size_and_stays_off_the_fitted_picture` |
-
-Not covered yet: L1/R1 leaving the mode alone when the button is remapped to the game (upstream's
-`bound_to_game` guard), `compose()` switching softening on during play (`set_soft_picture`), the
-GB (non-colour) Fit bezel on screen, Fit → Actual bringing the normal bezel back, and None/AGS-102
-showing no bezel in Fit.
+| It is the first branch and matches exactly `ScreenEffect::ShimmerlessGrid`'s number; whitespace is ignored (any machine) | `slot-gfx/tests/fit_shimmerless_grid_shader.rs` `shimmerless_grid_is_the_first_branch_and_matches_only_its_effect` |
+| In Fit, every pixel (grid darkening taken out) is a blend of only the game pixels it touches, and most are one game pixel's own colour: no fringes, not blurred (macOS) | `slot-gfx/tests/fit_shimmerless_grid.rs` `shimmerless_grid_in_fit_blends_only_neighbouring_game_pixels_and_stays_sharp` |
+| The fitted picture fills the height, black bars only at the sides (macOS) | `slot-gfx/tests/fit_shimmerless_grid.rs` `the_fitted_picture_fills_the_height_with_bars_only_at_the_sides` |
+| One even line per game pixel, on its edge and none inside it, on 3:2 and 4:3 panels (macOS) | `slot-gfx/tests/fit_shimmerless_grid.rs` `the_fitted_shimmerless_grid_lines_every_game_pixel_evenly` |
+| Every fitted row weighs the same, 480 / 144 = 3.33 screen lines (macOS) | `slot-gfx/tests/fit_shimmerless_grid.rs` `shimmerless_grid_gives_every_fitted_row_the_same_weight` |
+| At Integer (3x) nothing is blended: every pixel is its own game pixel's colour under the grid (macOS) | `slot-gfx/tests/fit_shimmerless_grid.rs` `shimmerless_grid_at_a_whole_scale_does_not_blend` |
+| GB and GBC Shader rows: Shimmerless → Shimmerless Grid → Off, saved each step | `slot/tests/fit_shimmerless_grid_menu.rs` `the_game_boy_shader_rows_step_to_shimmerless_grid_after_shimmerless_and_wrap_to_off` |
+| GBA never offers it; a GBA `shimmerless-grid` falls back to the default | `slot/tests/fit_shimmerless_grid_menu.rs` `the_gba_shader_row_never_offers_shimmerless_grid`, `a_gba_shader_saved_as_shimmerless_grid_falls_back_to_the_default` |
+| Saved as `shimmerless-grid` and read back | `slot/tests/fit_shimmerless_grid_menu.rs` `shimmerless_grid_is_saved_by_name_and_read_back` |
+| The in-game shader shortcut reaches it | `slot/tests/fit_shimmerless_grid_menu.rs` `the_shader_shortcut_reaches_shimmerless_grid_on_a_game_boy_color_game` |
 
 **When merging:** the fork's tests are kept like the fork's code. Never delete, rename, `#[ignore]`
 or loosen one, and never change what it asserts. If upstream changes an API a fork test uses
 (session setup, `Compositor` methods, test helpers), update only the setup. If a fork test fails
-after a merge, the merge is wrong: fix the code, not the test. All fork tests are in the fork's
-own files; the only fork change to an upstream test file is the two tests removed from
-`slot/tests/app.rs` (section 3).
+after a merge, the merge is wrong: fix the code, not the test.
 
 - Renderer tests are `#![cfg(target_os = "macos")]` (headless GL) and **silently pass elsewhere**.
   A green run on Linux CI proves nothing about rendering; run on macOS.
-- **Known failures not caused by the fork:** in `crates/slot-gfx/tests/layout.rs`,
-  `a_framed_frame_on_a_4_by_3_panel_is_todays_frame` and
-  `a_framed_frame_after_a_native_one_is_todays_frame_again` fail identically on unpatched `e5b12ad`
-  on a Mac. They compare against stored frame hashes that probably differ per GPU. Do not "fix"
-  them in the fork.
+- **Known failures not caused by the fork** (they fail the same on unmodified upstream on a Mac):
+  `slot-ui` `toast::tests::every_toast_is_set_at_full_size` ("Please switch to mGBA" set at 15 px)
+  and, in `crates/slot-gfx/tests/layout.rs`, the stored-frame-hash tests, which probably differ
+  per GPU. Do not "fix" them in the fork.
 
 ## 5. Releases
 
@@ -293,48 +232,26 @@ domain setting; disable Pages or the workflow in the fork's settings rather than
 
 ## 6. Open issues and decisions
 
-- **Tag `v1.7.0-gp-custom` does not build:** it points to `16c72c7`, the first version of the fork
-  commit, which compiles in `assets/bezel_gb_fit.png` and `assets/bezel_gbc_fit.png` with
-  `include_bytes!` but did not contain them. The fork commit on `main` (`0b46d92`) was amended to
-  add them. Every later tag builds; do not reuse or move the broken one.
-- **Tags so far:** `v1.7.0-gp-custom.1`–`.4`, `v1.8.0-gp-custom.1`, `v1.8.1-gp-custom.1`,
-  `v1.9.0-gp-custom.1` and `.2`. `v1.9.0-gp-custom.1` (`ed4518d`) and `.2` (`8575439`) were tagged
-  by hand on fork-only changes, not by a sync, so the next sync after upstream's next commit on
-  `v1.9.0` gives `v1.9.0-gp-custom.3`.
-- **Not verified on hardware:** the device build has not been run on a real RG SP with a real
-  game, in particular scrolling with softening on and the shader on the device's GLSL ES path.
-- **4:3 panels** (640x480: RG35XXSP, RG35XX Plus, RG28XX, RG35XX-H): slot scales its 720x480
-  canvas to 640x427 there, so Fit fills the canvas height, not the panel's, and thin top and bottom
-  bars remain. Fixing it means drawing outside the canvas. Out of scope.
-- **Planned, not built:** per-mode bezel folders on the card, `Bezels/<GB|GBC>/actual/` and
-  `Bezels/<GB|GBC>/fit/` (PNGs directly in `Bezels/<GB|GBC>/` stay Actual bezels). Undecided:
-  whether Fit uses the `fit/` file with the same name as the Actual pick, or gets its own pick (a
-  new in-game menu row saved as e.g. `bezel_gbc_fit=` in `Config/slot.state`). Until then card
-  bezels are hidden in Fit.
-- **Trademark:** the Fit bezel label approximates Nintendo's "GAME BOY COLOR" logo in Arial Bold
-  Italic. Keep that in mind before publishing the art more widely.
+- **Not verified on hardware:** Shimmerless Grid has not been run on a real RG SP with a real game,
+  in particular on the device's GLSL ES path.
+- **Same picture as the old fork Fit + Grid, not the same pixels:** the old fork drew Fit at x
+  93.33..626.67 (533.33 px); upstream rounds it to x 93..626 (533 px). Smoothing and grid are the
+  same, overall brightness and row/column evenness match, but the lines sit about a third of a
+  pixel apart, so frames differ pixel by pixel.
+- **Settings left from the old Fit:** `fit` entries in `Config/video_mode.txt` no longer parse
+  and fall back to Actual; users set Scale → Fit once per console instead.
+- **Tags so far:** up to `v1.12.0-gp-custom.3`. The old fork Fit's tags (`v1.7.0-gp-custom` to
+  `v1.12.0-gp-custom.3`) stay as they are; `v1.7.0-gp-custom` does not build (its Fit bezel art
+  was missing) and must not be reused.
 
 ## 7. Background on slot that the change depends on
 
-- **Picture pipeline:** the core renders into a 240x160 texture (`SRC_W` x `SRC_H`, canvas / 3).
-  A GB frame (160x144) sits centred at x 40..200, y 8..152 with black margins. `source_rect`
-  returns `[x, y, w, h]` in 0..1 texture units, drawn over the whole 720x480 canvas
-  (`OUT_W` x `OUT_H`).
-- **Bezels:** picked per console (GB, GBC, GBA), not per game, from the in-game menu (MENU →
-  Bezel, Left/Right cycles None → Default → AGS-102 (4:3 only) → files in `Bezels/<GB|GBC>/`).
-  Saved in `Config/slot.state` as `bezel_gb=`, `bezel_gbc=`, `bezel_gba=` with `none`,
-  `default`, `ags-102` or a file name; a missing file resolves to None (`App::resolved_bezel`).
-  A bezel is a 720x480 RGBA image over the canvas; the built-in Actual window is about
-  x 126..593, y 32..451. On a 720x480 panel the saved default is `ags-102`, which is not offered
-  there, so bezels are off until the user picks Default.
-- **Fit bezel art:** both PNGs are 720x480 RGBA and copy the Actual bezel's screen surround
-  into the side bars, so the picture looks set in the same screen. Each bar, from the outside in:
-  the Actual bezel's grey body (x 0..82 and 638..720), its 2 px highlight rim, its 9 px black
-  frame (x 84..93 and 627..636), then the same 7 px inner shadow the Actual frame casts over the
-  picture (black, alpha 135 at the picture's edge fading to 8, x 93..100 and 620..627). The rest
-  of the picture is transparent. The lamp and its BATTERY/POWER label are cut from the Actual
-  bezel at the same height and centred in the left bar; the right bar carries GAME BOY (COLOR),
-  running bottom to top, centred at x 679 on the middle row, in the Actual label's grey.
-  `python3 tools/fit_bezel/make_fit_bezels.py` (needs ffmpeg) builds both from
-  `bezel_gb(c).png`. If upstream redraws those, re-run it and check the frame and rim columns
-  it reads (the constants at its top) still match.
+- **Picture pipeline:** the core renders into a 240x160 texture (`SRC_W` x `SRC_H`). A GB frame
+  (160x144) sits centred at x 40..200, y 8..152 with black margins. `GameLayout` places the
+  picture on the panel per Scale (`Sizing::Fit` in `slot-gfx/src/placement.rs`), and the game
+  shader gets the source rect (`u_uv`), the drawn rect (`u_rect`, `u_fbo`) and the picture's own
+  rect (`u_pic`). Shimmerless and Grid both derive the scale from these (`hp` = half a screen
+  pixel in texels), which is what Shimmerless Grid relies on.
+- **Shaders:** chosen per console (`shader_gb`, `shader_gbc`, `shader_gba` in `Config/slot.state`)
+  from Settings → Screen or the in-game menu, and stepped in game with SELECT + A / SELECT + B.
+  The choice reaches the shader as `u_mode`, the `ScreenEffect`'s index.
