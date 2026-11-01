@@ -95,7 +95,7 @@ struct QuickPalette {
 #[derive(Default)]
 struct BezelSync {
     tex: Option<TexId>,
-    image: Option<(Console, BezelPick, Option<BezelArt>, (u32, u32), bool)>,
+    image: Option<(Console, BezelPick, Option<BezelArt>, (u32, u32))>,
     labels: [String; 3],
     faces: [(Option<TexId>, Option<TexId>); 3],
 }
@@ -613,13 +613,13 @@ impl Frontend {
             slot_store::Shader::Dot => ScreenEffect::Dot,
             slot_store::Shader::Simpletex => ScreenEffect::Simpletex,
             slot_store::Shader::Shimmerless => ScreenEffect::Shimmerless,
+            slot_store::Shader::ShimmerlessGrid => ScreenEffect::ShimmerlessGrid,
         });
         compositor.set_shake(self.session.app().screen_shake());
         compositor.set_screen_power(self.session.app().screen_power());
         compositor.set_screen_footer(self.session.app().screen_footer());
         compositor.set_game_source_rect(self.session.app().source_rect());
         compositor.set_game_layout(self.session.app().game_layout());
-        compositor.set_soft_picture(self.session.app().softens_picture());
         self.grab_link_shot(compositor);
         compositor.begin_frame();
         if self.draw_rebuild(compositor) {
@@ -1370,10 +1370,9 @@ fn sync_game_bezel(app: &mut App, compositor: &mut Compositor, state: &mut Bezel
     let (w, h) = app.game_bezel_size();
     let last = state.image.as_ref().and_then(|image| image.2);
     let art = bezel_key(&pick, app.bezel_art(), last);
-    let shown = crate::fit::bezel_key(app, (platform, pick, art, (w, h)), state.image.as_ref());
+    let shown = (platform, pick, art, (w, h));
     if state.image.as_ref() != Some(&shown) {
         let rgba = match &shown.1 {
-            _ if shown.4 => crate::fit::game_bezel(platform, &shown.1, w, h),
             BezelPick::None | BezelPick::Ags102 => None,
             BezelPick::Default => shown
                 .2
