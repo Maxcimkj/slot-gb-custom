@@ -189,6 +189,7 @@ rendering. File paths are under `crates/`.
 | Feature | Tests |
 |---|---|
 | It is the first branch and matches exactly `ScreenEffect::ShimmerlessGrid`'s number; whitespace is ignored (any machine) | `slot-gfx/tests/fit_shimmerless_grid_shader.rs` `shimmerless_grid_is_the_first_branch_and_matches_only_its_effect` |
+| The branch still smooths like Shimmerless and then darkens the edges like Grid, in that order (any machine; the rendering itself is checked by the macOS tests) | `slot-gfx/tests/fit_shimmerless_grid_shader.rs` `shimmerless_grid_smooths_the_sample_and_then_darkens_the_pixel_edges` |
 | In Fit, every pixel (grid darkening taken out) is a blend of only the game pixels it touches, and most are one game pixel's own colour: no fringes, not blurred (macOS) | `slot-gfx/tests/fit_shimmerless_grid.rs` `shimmerless_grid_in_fit_blends_only_neighbouring_game_pixels_and_stays_sharp` |
 | The fitted picture fills the height, black bars only at the sides (macOS) | `slot-gfx/tests/fit_shimmerless_grid.rs` `the_fitted_picture_fills_the_height_with_bars_only_at_the_sides` |
 | One even line per game pixel, on its edge and none inside it, on 3:2 and 4:3 panels (macOS) | `slot-gfx/tests/fit_shimmerless_grid.rs` `the_fitted_shimmerless_grid_lines_every_game_pixel_evenly` |
@@ -198,6 +199,7 @@ rendering. File paths are under `crates/`.
 | GBA never offers it; a GBA `shimmerless-grid` falls back to the default | `slot/tests/fit_shimmerless_grid_menu.rs` `the_gba_shader_row_never_offers_shimmerless_grid`, `a_gba_shader_saved_as_shimmerless_grid_falls_back_to_the_default` |
 | Saved as `shimmerless-grid` and read back | `slot/tests/fit_shimmerless_grid_menu.rs` `shimmerless_grid_is_saved_by_name_and_read_back` |
 | The in-game shader shortcut reaches it | `slot/tests/fit_shimmerless_grid_menu.rs` `the_shader_shortcut_reaches_shimmerless_grid_on_a_game_boy_color_game` |
+| The toast reads "Shader: Shimmerless Grid" in upstream's wide toast box, and the menu shows "Shimmerless Grid" (any machine) | `slot/tests/fit_shimmerless_grid_menu.rs` `the_toast_and_the_menu_name_shimmerless_grid_in_full` |
 
 **When merging:** the fork's tests are kept like the fork's code. Never delete, rename, `#[ignore]`
 or loosen one, and never change what it asserts. If upstream changes an API a fork test uses
