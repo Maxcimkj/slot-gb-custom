@@ -92,6 +92,7 @@ CHECKS = [
 FORK_TESTS = [
     ("slot-gfx", "fit_shimmerless_grid_shader", False, [
         "shimmerless_grid_is_the_first_branch_and_matches_only_its_effect",
+        "shimmerless_grid_smooths_the_sample_and_then_darkens_the_pixel_edges",
     ]),
     ("slot", "fit_shimmerless_grid_menu", False, [
         "the_game_boy_shader_rows_step_to_shimmerless_grid_after_shimmerless_and_wrap_to_off",
@@ -99,6 +100,7 @@ FORK_TESTS = [
         "shimmerless_grid_is_saved_by_name_and_read_back",
         "a_gba_shader_saved_as_shimmerless_grid_falls_back_to_the_default",
         "the_shader_shortcut_reaches_shimmerless_grid_on_a_game_boy_color_game",
+        "the_toast_and_the_menu_name_shimmerless_grid_in_full",
     ]),
     ("slot-gfx", "fit_shimmerless_grid", True, [
         "shimmerless_grid_in_fit_blends_only_neighbouring_game_pixels_and_stays_sharp",
@@ -142,6 +144,9 @@ does not have. So in an upstream file:
   fork's feature, not a leftover. Never add fork logic beyond those hooks.
 - Never reformat or lint-fix upstream's code, even where rustfmt or clippy would. Upstream's
   formatting is kept exactly, so the next sync does not conflict over it.
+- If a new upstream test file uses `slot_gfx::HeadlessSurface` (macOS only) and so does not build
+  here, add `#![cfg(target_os = "macos")]` as its first line, as the fork does for upstream's
+  other GL tests (FORK-NOTES.md section 3), and change nothing else in it.
 
 Useful commands:
 - `git diff {old_base} {upstream_ref} -- <file>`: what upstream changed since the last sync.

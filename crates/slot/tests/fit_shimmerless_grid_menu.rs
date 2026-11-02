@@ -7,7 +7,7 @@ use common::{app_booting_at, tmp_root_with_carts, Clock, CLOCK_IS_SET};
 use slot::app::{App, Phase};
 use slot_input::{Action, Btn};
 use slot_store::{read_slot_state, write_slot_state, Shader, SlotState};
-use slot_ui::{QuickRow, QuickValue};
+use slot_ui::{toast_box, QuickRow, QuickValue, Toast};
 use tempfile::TempDir;
 
 fn on_carousel_with(state: SlotState) -> (TempDir, App, Clock) {
@@ -150,4 +150,21 @@ fn the_shader_shortcut_reaches_shimmerless_grid_on_a_game_boy_color_game() {
     );
     s.app_mut().apply(Action::ShaderNext);
     assert_eq!(s.app().screen_shader(), Shader::Off);
+}
+
+#[test]
+fn the_toast_and_the_menu_name_shimmerless_grid_in_full() {
+    assert_eq!(
+        Toast::ShaderShimmerlessGrid.text(),
+        "Shader: Shimmerless Grid"
+    );
+    assert_eq!(QuickValue::ShimmerlessGrid.text(), "Shimmerless Grid");
+    // The text does not fit the normal toast at full size: it uses upstream's wide toast, like
+    // "Please switch to mGBA".
+    assert_eq!(
+        toast_box(Toast::ShaderShimmerlessGrid),
+        toast_box(Toast::NeedsMgba),
+        "the Shimmerless Grid toast is not in upstream's wide-toast list"
+    );
+    assert!(Toast::all().contains(&Toast::ShaderShimmerlessGrid));
 }
