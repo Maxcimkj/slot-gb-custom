@@ -13,17 +13,22 @@
 *.dylib
 *.so
 
+.r2*
+
 .DS_Store
 /.idea/
 /target-device
+/target-host
 /target-verify
 /dist-device
+/dist-device-ds
 /site/public
 /site/.cache
 
 # Parallel implementation worktrees, never content.
 /.worktrees
 .superpowers/
+/.task/
 
 # Release trees and zips from task dist:device OUT=slot-<tag>
 /slot-v*/

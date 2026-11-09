@@ -2,6 +2,206 @@
 
 One record per upstream sync, newest first. Written by `.github/workflows/sync-upstream.yml`; see `FORK-NOTES.md` for how the fork is kept.
 
+## 2026-11-09 14:16 UTC · upstream `0b95d32` → `3449869`
+
+Pull request: https://github.com/Maxcimkj/slot-gb-custom/pull/19
+Run: https://github.com/Maxcimkj/slot-gb-custom/actions/runs/42630085232
+
+### Upstream changes (73 commits)
+
+- `3449869` Update CHANGELOG.md (Brandon T. Kowalski)
+- `7b3d1cb` Docs update for v1.15.2 (Brandon T. Kowalski)
+- `739ba3b` Add Power On to Auto Load State and rename the save state rows, closes #206 (Brandon T. Kowalski)
+- `22e60fc` Say the update check could not fetch update info and to try again later (Brandon T. Kowalski)
+- `559c3b3` Slide the studio mat in over no wallpaper without a second copy, closes #207 (Brandon T. Kowalski)
+- `a78d135` Build DSperate for the Mac and run the RG DS+ in two windows (Brandon T. Kowalski)
+- `babf8ed` Give the RG DS+ two screens: shelf and menus below, box art and the DS slot above (Brandon T. Kowalski)
+- `d8ca497` Leave the RG DS+ charging LED to the kernel (Brandon T. Kowalski)
+- `55ebb30` Fix changelog to actually make sense (Brandon T. Kowalski)
+- `354c024` Fade the game title behind the collection add and remove screens (Brandon T. Kowalski)
+- `152407b` Leave the RG DS+ out of releases for now (Brandon T. Kowalski)
+- `0e40533` Space the device names in the wallpaper README (Brandon T. Kowalski)
+- `61b08b1` Update docs (Brandon T. Kowalski)
+- `93bfa35` update device support list and credit gambatte (Brandon T. Kowalski)
+- `13fb4ed` Draw LCD to fit 4:3 screens and keep LCD3x on 3:2 (Brandon T. Kowalski)
+- `f927231` Let Pikachu talk again in Pokemon Yellow, closes #202 (Brandon T. Kowalski)
+- `a8bc581` Count the hidden in-game Overlay row in the menu tests (Brandon T. Kowalski)
+- `0152a3a` Darken the game further behind the in-game menu (Brandon T. Kowalski)
+- `2c75df3` Lay card overlays over the game, under the bezel (Brandon T. Kowalski)
+- `8ce7d30` Keep the core picker and core choice apart for same-named games on two systems (Brandon T. Kowalski)
+- `634b126` Play DS games on the RG DS+ with DSperate (Brandon T. Kowalski)
+- `f1fcda8` Give the RG DS+ its own About label (Brandon T. Kowalski)
+- `5fdfb02` Read the RG DS+ buttons, stick and touchscreen on dsOS (Brandon T. Kowalski)
+- `d785c91` Remember the last GBA shelf and the shelf L1/R1 lands on (Brandon T. Kowalski)
+- `a993dac` Put the handheld to sleep when the lid closes on dsOS (Brandon T. Kowalski)
+- `04975cc` Draw the RG DS+ at 1.28x from an 800x600 layout (Brandon T. Kowalski)
+- `b338e88` Drive every backlight so both screens dim and go dark (Brandon T. Kowalski)
+- `555b2c1` Reopen audio when the headphone jack changes on dsOS (Brandon T. Kowalski)
+- `7a5fbce` Wait for the boot logo to release the display before drawing (Brandon T. Kowalski)
+- `7c282ee` Lay out on 720x720 and 1024x768 panels and add a KMS backend (Brandon T. Kowalski)
+- `37c14d1` Add kid mode (Brandon T. Kowalski)
+- `2f0314e` Run the cart clock in the time zone of the card's city (Brandon T. Kowalski)
+- `0fe8f5c` Point repo and site links at slot-cfw (Brandon T. Kowalski)
+- `1991c3b` Move Date & Time below Wi-Fi in the quick menu (Brandon T. Kowalski)
+- `eefb835` Open the add screen on New Collection and set toasts at title size (Brandon T. Kowalski)
+- `24a9c30` Sweep stray spaces and dots from ROM names at boot (Brandon T. Kowalski)
+- `156294d` Add collections (Brandon T. Kowalski)
+- `f1f6ef9` Add Boot Logo Studio to the docs (closes #196) (Brandon T. Kowalski)
+- `c6e1b78` Update boot logo docs #196 (Brandon T. Kowalski)
+- `22c4df1` Fit the no-network notice on screen (closes #195) (Brandon T. Kowalski)
+- `c8921c2` Turn on rumble in Gambatte (closes #194) (Brandon T. Kowalski)
+- `a123eb4` Remove comments from the slot.local responder (Brandon T. Kowalski)
+- `38afb38` Hear every defence of slot.local and reprint the receipt on a rename (Prashant Vaibhav)
+- `0153fb1` Answer slot.local beside BaseOS's hostname, with proper mDNS probing (Prashant Vaibhav)
+- `40f469e` Restore the slot.local responder to take #193 (Brandon T. Kowalski)
+- `2fd150c` Skip the Gamebit receipt print with A (Brandon T. Kowalski)
+- `e2a42e0` Print the name Avahi answers to on the Gamebit receipt, and drop it when too long (Brandon T. Kowalski)
+- `ca1475c` Remove the unused background clock write and stray comments (Brandon T. Kowalski)
+- `1a8f556` Use BaseOS NTP and hostname instead of slot's own SNTP and mDNS (Brandon T. Kowalski)
+- `75e8d67` Pick Gamebit labels and guides with an input on the page so Safari uploads them (Brandon T. Kowalski)
+- `38ef977` Redraw a replaced label after a Gamebit upload or Fetch Label (Brandon T. Kowalski)
+- `e66715d` Update changelog for v1.14.0 (Brandon T. Kowalski)
+- `bdda6f5` Add six software dim steps below the lowest backlight level, closes #189 (Brandon T. Kowalski)
+- `32f9213` Set Gambatte bootloader option before init so it boots the card BIOS (Brandon T. Kowalski)
+- `601b5b2` Center the Tools page like the Screen page (Brandon T. Kowalski)
+- `2e30f5c` Keep a trace of the last five link attempts in Logs/slotlink.log (Brandon T. Kowalski)
+- `7758592` Mark the RG34XX and RG34XXSP as tested (Brandon T. Kowalski)
+- `d041c39` Document removing a game from Recents (Brandon T. Kowalski)
+- `e898f71` Ignore the go-task cache (Brandon T. Kowalski)
+- `495922e` Stop the boot logo page flashing the stock logo before a custom one loads (Brandon T. Kowalski)
+- `cc784d4` Add RomM receive support behind the romm build feature (Brandon T. Kowalski)
+- `285bdc4` Draw the back of the shell behind a Game Boy board in the core picker (Brandon T. Kowalski)
+- `0a4589f` Drop header index entries for games no longer on the card (Brandon T. Kowalski)
+- `57e3c1b` Add Gambatte for Game Boy games and stop Game Boy audio pops (#184) (Brandon T. Kowalski)
+- `9986b95` Delete draw-list tests that duplicate pixel tests (Brandon T. Kowalski)
+- `6f5e8dc` Build the open cart from the label cache, not the source PNG (Brandon T. Kowalski)
+- `417a658` Convert old label caches instead of redrawing them (Brandon T. Kowalski)
+- `7d81e48` Give Game Boy labels the size of their well (Brandon T. Kowalski)
+- `51bae4f` Index ROM headers so the shelf never reads a ROM (Brandon T. Kowalski)
+- `11c16f0` Make the held letter jump repeat configurable (Brandon T. Kowalski)
+- `f81c807` Cache labels as LZ4 RGB and learn label dates at boot (Brandon T. Kowalski)
+- `cf70a5d` Keep the shelf row on screen when frames run long (Brandon T. Kowalski)
+- `2bb8ece` Remove a game from Recents with X, closes #185 (Brandon T. Kowalski)
+
+### Fork changes kept on top (7 commits)
+
+- `eee3a5a` Replace the fork's Fit mode with a Shimmerless Grid shader
+- `df4316a` Run the upstream sync once a week instead of daily
+- `b9adfc6` Fit: upstream's Grid, softening only in Fit, Fit decided from a seated cart
+- `35cbb3f` Fit: Actual-style bezels, even grid, and all fork code in fit*.rs
+- `8575439` Make README.md the fork's own and keep it on every upstream sync
+- `c59df76` Take release notes for -gp-custom tags from the upstream version's section
+- `0b46d92` Add new fit mode for gb, gbc and bezels
+
+### Conflicts
+
+- `README.md`: The fork keeps its own README; upstream's changes to it were not taken.
+- Resolved by OpenCode with deepseek/deepseek-v4.1-flash: `.gitignore`, `crates/slot-gfx/src/lcd3x.rs`, `crates/slot-gfx/src/shaders.rs`, `crates/slot-ui/src/quick_menu.rs`, `crates/slot-ui/src/toast.rs`, `crates/slot-ui/tests/toast.rs`, `crates/slot/src/frontend.rs`
+
+#### Agent notes
+
+##### Sync notes: upstream `3449869` into the fork
+
+##### .gitignore
+
+Upstream added its own lines (`.r2*`, `/target-host`, `/dist-device-ds`, `/.task/`) and the fork
+appends its two release-tree patterns (`/slot-v*/`, `/slot-v*-h700.zip`) under a comment. I kept
+upstream's file exactly and re-appended the fork's comment and two lines at the end, so nothing of
+upstream's is lost and the fork's release zips stay ignored.
+
+##### crates/slot-gfx/src/lcd3x.rs
+
+Upstream added the `LcdGrid` `ScreenEffect` variant after `Shimmerless`, and the fork adds
+`ShimmerlessGrid`. Upstream wins, so I kept `LcdGrid` and put `ShimmerlessGrid` last, which makes
+its index 7 (`mode()` is the enum index) instead of the fork's old 6.
+
+##### crates/slot-gfx/src/shaders.rs
+
+Upstream added its own `LcdGrid` branch `} else if (u_mode > 5.5) {` at the top of `GAME_FRAG`,
+right where the fork's Shimmerless Grid branch sat. Per FORK-NOTES I kept the fork's branch first
+in the chain and changed it to `abs(u_mode - 7.0) < 0.5`, then left upstream's `u_mode > 5.5`
+branch below it (mode 6 falls through to it, mode 7 is caught by ours). The fork's copy of the
+Shimmerless and Grid code is unchanged.
+
+##### crates/slot-ui/src/quick_menu.rs
+
+Upstream added many `QuickValue` variants (Https through Never) and the fork adds `ShimmerlessGrid`
+after `Shimmerless`. The variant, its `ALL` entry and its `text()` arm merged cleanly; I only had to
+set the `ALL` array length to the union, 58. `ShimmerlessGrid` stays last among the shader values.
+
+##### crates/slot-ui/src/toast.rs
+
+Upstream added `Collection` and `KidUnlocked` and made every toast 400 px wide (it removed
+`WARNING_W`, since `TOAST_W` is now the old wide width), while the fork adds `ShaderShimmerlessGrid`
+and had put it in the wide-toast list. I set `FIXED` to the union length 29 and kept the fork's
+variant, text and `FIXED` entry, but took upstream's plain `w: TOAST_W`: the fork's wide-toast hook
+is obsolete now that upstream widened every toast, and the full-size test proves the text fits.
+
+##### crates/slot-ui/tests/toast.rs
+
+Upstream added `Collection` and `KidUnlocked` to the fixed-banner list and the fork adds
+`ShaderShimmerlessGrid`; the list itself merged cleanly. I updated the three slice bounds in
+`the_banner_says_what_happened_and_never_what_is_on_screen` to the union count of 29.
+
+##### crates/slot/src/frontend.rs
+
+Upstream replaced the inline shader `match` in `compose()`'s `prepare` with a single call to
+`self.session.app().screen_effect()`, moving the `Shader`-to-`ScreenEffect` mapping into `app.rs`.
+The fork's only hook here was one arm of that old `match`, so I took upstream's line unchanged and
+moved the hook to `app.rs` (see below); frontend.rs is now byte for byte upstream.
+
+##### crates/slot/src/app.rs
+
+Upstream added `screen_effect()` holding the mapping that used to live in `frontend.rs`; the fork's
+toast and quick-menu value arms had already merged cleanly. I re-added the fork's hook as
+`Shader::ShimmerlessGrid => ScreenEffect::ShimmerlessGrid` in `screen_effect()`, so the new
+Shimmerless Grid effect still reaches the compositor.
+
+##### crates/slot-store/tests/durability.rs
+
+This is upstream's file and was not a conflict: upstream added `overlay_*`, `shelf_mode`,
+`collection`, `gba_video`, `kid_mode` and `kid_shelf` to `SlotState`, but its own
+`a_card_from_before_the_settings_keeps_all_its_values` still builds the struct as a full literal
+without those fields, so it no longer compiled. To keep `fork-clippy` green I added the missing
+fields with the values `read_slot_state` produces for that card and imported `ShelfMode`, `KidMode`
+and `KID_SHELF_ALL`. No assertion changed; this is a build fix for upstream's own oversight.
+
+##### Checks
+
+- `python3 .github/sync/sync_upstream.py fork-fmt` and `fork-fmt --check`: passed (3 fork files, no
+  change).
+- `python3 .github/sync/sync_upstream.py fork-clippy`: passed after the `durability.rs` fix; no
+  compile errors and no lints in the fork's files (21 warnings in upstream's own code).
+- `python3 .github/sync/sync_upstream.py fork-clippy device`: passed (5 upstream warnings).
+- `cargo build --profile device --target-dir target-device -p slot --no-default-features --features device`: passed.
+- `python3 .github/sync/sync_upstream.py fork-tests`: every Shimmerless Grid test ran and passed;
+  the macOS-only `fit_shimmerless_grid.rs` was skipped on Linux as expected.
+- `cargo test -p slot-gfx --lib --tests`: passed.
+- `cargo test -p slot-ui --lib --tests`: one failure, not the fork's and not a missing core:
+  upstream's `house_label::tests::a_game_boy_label_is_the_shape_of_its_own_well`
+  (`crates/slot-ui/src/house_label.rs`, untouched by the fork) compares floats and this machine
+  computes 1.136515 against the expected 1.120603. The `toast` and `quick_menu` integration tests
+  (the ones the fork edits) both passed.
+- `cargo test -p slot-store --lib --tests`: one failure, not the fork's:
+  upstream's `header_index::keeping_every_entry_leaves_the_index_saved` fails only when the other
+  `header_index` tests run alongside it, because the module's global entry map and `DIRTY` flag are
+  not reset between tests; it passes on its own. Left as upstream's test-isolation bug.
+- `cargo test -p slot --lib --tests`: one failure, not the fork's:
+  `e2e::the_whole_pass_from_boot_to_resume` runs on the mock core (no mGBA on this machine) and its
+  eject assertion at `crates/slot/tests/e2e.rs:164` sees the cart still in `slot.state`; the file is
+  upstream's and unchanged by the fork. Reported as a machine/core issue.
+
+### Checks
+
+| Check | Result |
+|---|---|
+| `sync_upstream.py fork-fmt --check`: rustfmt on the fork's own files | ✅ success |
+| `sync_upstream.py fork-clippy`: builds everything, lints the fork's own files | ✅ success |
+| `sync_upstream.py fork-clippy device`: the same for the device build | ✅ success |
+| `cargo build --profile device -p slot --no-default-features --features device` | ✅ success |
+| `sync_upstream.py fork-tests`: the fork's Shimmerless Grid tests (FORK-NOTES.md section 4) | ✅ success |
+| `cargo test --workspace --no-fail-fast --lib --bins --tests` (advisory: some tests need cores the runner lacks) | ⚠️ failure |
+
 ## 2026-11-01 23:27 UTC · upstream `ab518c6` → `0b95d32`
 
 Pull request: https://github.com/Maxcimkj/slot-gb-custom/pull/16
