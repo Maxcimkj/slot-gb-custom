@@ -3,8 +3,8 @@ mod common;
 use common::tmp_root;
 use slot_store::{
     atomic_write, read_slot_state, sweep_temps, write_slot_state, Appearance, AutoLoad, BezelPick,
-    Blending, Core, GbPalette, Platform, Recent, Scale, Shader, SlotState, Stretch, WallpaperPick,
-    WallpaperTint, Zone, FF_SPEEDS, FF_SPEED_DEFAULT,
+    Blending, Core, GbPalette, KidMode, Platform, Recent, Scale, Shader, ShelfMode, SlotState,
+    Stretch, WallpaperPick, WallpaperTint, Zone, FF_SPEEDS, FF_SPEED_DEFAULT, KID_SHELF_ALL,
 };
 use tempfile::tempdir;
 
@@ -267,6 +267,9 @@ fn a_card_from_before_the_settings_keeps_all_its_values() {
             bezel_gba: BezelPick::Ags102,
             bezel_gb: BezelPick::Ags102,
             bezel_gbc: BezelPick::Ags102,
+            overlay_gba: None,
+            overlay_gb: None,
+            overlay_gbc: None,
             scale_gba: Scale::Fit,
             scale_gb: Scale::SpFrame,
             scale_gbc: Scale::SpFrame,
@@ -280,6 +283,11 @@ fn a_card_from_before_the_settings_keeps_all_its_values() {
             favorites: Vec::new(),
             shelf: None,
             shelf_cart: None,
+            shelf_mode: ShelfMode::All,
+            collection: None,
+            gba_video: false,
+            kid_mode: KidMode::Off,
+            kid_shelf: KID_SHELF_ALL.to_string(),
         }
     );
 }

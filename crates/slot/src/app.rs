@@ -4703,6 +4703,7 @@ impl App {
             Shader::Dot => ScreenEffect::Dot,
             Shader::Simpletex => ScreenEffect::Simpletex,
             Shader::Shimmerless => ScreenEffect::Shimmerless,
+            Shader::ShimmerlessGrid => ScreenEffect::ShimmerlessGrid,
         }
     }
 
@@ -5915,6 +5916,7 @@ impl App {
             Shader::Dot => Toast::ShaderDot,
             Shader::Simpletex => Toast::ShaderSimpletex,
             Shader::Shimmerless => Toast::ShaderShimmerless,
+            Shader::ShimmerlessGrid => Toast::ShaderShimmerlessGrid,
         };
         self.persist();
         self.hud.toast(said, self.now());
@@ -14082,6 +14084,7 @@ fn shader_value(shader: Shader) -> QuickValue {
         Shader::Dot => QuickValue::Dot,
         Shader::Simpletex => QuickValue::Simpletex,
         Shader::Shimmerless => QuickValue::Shimmerless,
+        Shader::ShimmerlessGrid => QuickValue::ShimmerlessGrid,
     }
 }
 
