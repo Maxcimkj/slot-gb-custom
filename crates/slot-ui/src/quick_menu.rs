@@ -953,6 +953,7 @@ pub enum QuickValue {
     Dot,
     Simpletex,
     Shimmerless,
+    ShimmerlessGrid,
     Dark,
     Light,
     Show,
@@ -1001,7 +1002,7 @@ pub enum QuickValue {
 }
 
 impl QuickValue {
-    pub const ALL: [QuickValue; 57] = [
+    pub const ALL: [QuickValue; 58] = [
         QuickValue::Speed1_5,
         QuickValue::Speed2,
         QuickValue::Speed3,
@@ -1014,6 +1015,7 @@ impl QuickValue {
         QuickValue::Dot,
         QuickValue::Simpletex,
         QuickValue::Shimmerless,
+        QuickValue::ShimmerlessGrid,
         QuickValue::Dark,
         QuickValue::Light,
         QuickValue::Show,
@@ -1107,6 +1109,7 @@ impl QuickValue {
             QuickValue::Dot => "Dot",
             QuickValue::Simpletex => "Simpletex",
             QuickValue::Shimmerless => "Shimmerless",
+            QuickValue::ShimmerlessGrid => "Shimmerless Grid",
             QuickValue::Dark => "Dark",
             QuickValue::Light => "Light",
             QuickValue::Show => "Show",
