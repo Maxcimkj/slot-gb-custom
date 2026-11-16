@@ -2,6 +2,144 @@
 
 One record per upstream sync, newest first. Written by `.github/workflows/sync-upstream.yml`; see `FORK-NOTES.md` for how the fork is kept.
 
+## 2026-11-16 14:00 UTC · upstream `3449869` → `8fbc608`
+
+Pull request: https://github.com/Maxcimkj/slot-gb-custom/pull/20
+Run: https://github.com/Maxcimkj/slot-gb-custom/actions/runs/43878538321
+
+### Upstream changes (49 commits)
+
+- `8fbc608` Give the ring tests labelled carts now that bare carts are handwritten (Brandon T. Kowalski)
+- `2ca5a36` Update two Wi-Fi tests for the offline label printer and the radio goodbye (Brandon T. Kowalski)
+- `91e717c` No PRs (Brandon T. Kowalski)
+- `b566472` Final release? (Brandon T. Kowalski)
+- `c398595` Play sound through a USB-C audio adapter when one is plugged in (machomano11)
+- `6f06c6b` Update RG SP svg (Brandon T. Kowalski)
+- `3b79a56` Requeue a gallery thumbnail still decoding when the gallery reopens (Sergey Bagrintsev)
+- `0d14512` Fix marker edge cases and stop rebuilding its writing on every preview (Brandon T. Kowalski)
+- `3973e5e` Give the README an animated hero and self-hosted cart badges (Brandon T. Kowalski)
+- `888f9a8` Write labels by hand on carts with no label art (Brandon T. Kowalski)
+- `8b39836` Keep Bluetooth warm and join the host's Wi-Fi while the invite card is up (Brandon T. Kowalski)
+- `6e49ce2` Add missing overlay docs (Brandon T. Kowalski)
+- `41bac9c` Keep the invite card out of the link screen backdrop (Brandon T. Kowalski)
+- `8bc463f` Drop the repeated Wi-Fi line from the Cart Studio tour stop (Brandon T. Kowalski)
+- `fd0e273` Document link invites, nicknames and the new link messages (Brandon T. Kowalski)
+- `c4df0da` Bump DSperate to 0688b410 and add an opt-in GPU 3D card flag (Brandon T. Kowalski)
+- `dc72ecb` Invite Kid Mode SPs to link play over Bluetooth (Brandon T. Kowalski)
+- `d10cb76` Keep the menu open after turning Kid Mode on and lock when it closes (Brandon T. Kowalski)
+- `d987746` Show the Kid Mode unlock toast from the first frame and hold it for 4 s (Brandon T. Kowalski)
+- `18cf953` Update turbo docs following deletion of setting (Brandon T. Kowalski)
+- `e4f89d2` Update screen docs with ghosting additions from fork (Brandon T. Kowalski)
+- `3edaed5` Blend frames on the GPU under every core (Prashant Vaibhav)
+- `45a2cc6` Drop the Turbo Buttons setting and rely on clearing Turbo A and B in Controls (Brandon T. Kowalski)
+- `4269476` Format the workspace with rustfmt (Brandon T. Kowalski)
+- `03b1de9` Wait for the eject write in the end-to-end test (Brandon T. Kowalski)
+- `0dc6d99` Lint and test the RG DS+ build in CI and refuse release tags that skipped the checks (Brandon T. Kowalski)
+- `ef80e78` Walk tests to menu rows by name and render them without the wallpaper (Brandon T. Kowalski)
+- `26e767b` Update the RG DS+ screen tests for the game dimmed under the menu (Brandon T. Kowalski)
+- `0cf9b12` Fix clippy warnings and stale tests (Brandon T. Kowalski)
+- `84961ff` Turn the RG DS+ bottom screen off during GB and GBA play (Brandon T. Kowalski)
+- `6ca86ac` Update changelog and docs for v1.15.3 (Brandon T. Kowalski)
+- `7ff6353` Credit the DS Lite for the slotDS cart sounds (Brandon T. Kowalski)
+- `3d90dbe` Set favorites page to use new favorites clip (Brandon T. Kowalski)
+- `08f03a6` Ship slot's wallpapers as Slot.png files, add Per Shelf's Default.png, closes #216 (Brandon T. Kowalski)
+- `ba444da` Link to Frankie's profile (Brandon T. Kowalski)
+- `ec882fb` Add missing favorites demo to tour (Brandon T. Kowalski)
+- `e3a0f02` Show battery and clock in the top corners of the shelf menus (Brandon T. Kowalski)
+- `982bee4` Preview Wallpaper Tint live with a toast, and unload Wi-Fi before the deploy reboot (Brandon T. Kowalski)
+- `c2e1c76` Add a dismissable slot. advance banner to the home page (Brandon T. Kowalski)
+- `09f2637` Add a Battery Display setting and regroup the settings menu, closes #212 (Brandon T. Kowalski)
+- `a38db4c` Split Auto Load State into Resume on Insert and Resume on Power On, always save on eject, closes #208 (Brandon T. Kowalski)
+- `29a1a39` Pin the DS emulator and its render threads to their own cores while a DS game runs (Brandon T. Kowalski)
+- `5d291c6` Part the shelf off screen while a DS card flies and bring it back after it lands (Brandon T. Kowalski)
+- `9829eef` Show the game dimmed behind the RG DS+ menu box art and drop the corner status (Brandon T. Kowalski)
+- `d4077b3` Flip each RG DS+ panel without blocking and pace frames to the top panel's vblank (Brandon T. Kowalski)
+- `78c7cca` Keep the DS emulator at the panel's rate instead of re-measuring it from a late loop (Brandon T. Kowalski)
+- `0d40094` Change both RG DS+ screens on the same frame when a DS game's menu opens (Brandon T. Kowalski)
+- `c76b9b5` Make the gpSP, scale and chrome tests build with the DS feature (Brandon T. Kowalski)
+- `ee981fd` Fix the slot-store durability test build, closes #213 (Brandon T. Kowalski)
+
+### Fork changes kept on top (7 commits)
+
+- `eee3a5a` Replace the fork's Fit mode with a Shimmerless Grid shader
+- `df4316a` Run the upstream sync once a week instead of daily
+- `b9adfc6` Fit: upstream's Grid, softening only in Fit, Fit decided from a seated cart
+- `35cbb3f` Fit: Actual-style bezels, even grid, and all fork code in fit*.rs
+- `8575439` Make README.md the fork's own and keep it on every upstream sync
+- `c59df76` Take release notes for -gp-custom tags from the upstream version's section
+- `0b46d92` Add new fit mode for gb, gbc and bezels
+
+### Conflicts
+
+- `README.md`: The fork keeps its own README; upstream's changes to it were not taken.
+- Resolved by OpenCode with deepseek/deepseek-v4.1-flash: `.gitignore`, `crates/slot-store/tests/durability.rs`, `crates/slot-ui/src/toast.rs`, `crates/slot-ui/tests/toast.rs`
+
+#### Agent notes
+
+##### Sync notes: upstream `8fbc608` into the fork
+
+##### .gitignore
+
+Upstream added a single line, `/target-check`, at the end of its ignore list. The fork appends
+`/slot-v*/` and `/slot-v*-h700.zip` under a comment so its release trees and zips stay ignored. I
+kept upstream's file exactly, including `/target-check`, and re-appended the fork's comment and two
+patterns at the end.
+
+##### crates/slot-store/tests/durability.rs
+
+This is upstream's file, and upstream rewrote it: it removed the `AutoLoad` enum (splitting auto-load
+into `resume_insert`/`resume_power_on`), replaced the full `SlotState` literal in
+`a_card_from_before_the_settings_keeps_all_its_values` with `..SlotState::default()`, and added
+`ds_build` plus the `only_a_card_that_turned_turbo_off_reads_as_turbo_off` test. The fork's only
+change here was a build fix from the previous sync (extra `KidMode`/`ShelfMode`/`KID_SHELF_ALL`
+imports and explicit `overlay_*`/`shelf_mode`/`collection`/`gba_video`/`kid_*` fields) that existed
+only because upstream's own test did not compile against its new `SlotState`. Upstream's
+`..SlotState::default()` now covers those fields, so the fork fix is obsolete; I took upstream's
+version, dropped the fork's extra imports and fields, and changed no assertion.
+
+##### crates/slot-ui/src/toast.rs
+
+Upstream added `TintOff`, `TintLow`, `TintMedium` and `TintHigh` and widened every toast to 400 px,
+which removed its old wide-toast special case. The fork adds `ShaderShimmerlessGrid` after
+`ShaderShimmerless`, with the text `Shader: Shimmerless Grid`. The enum, the `FIXED` list entry and
+`fixed_text` merged cleanly; only the `FIXED` array length conflicted, so I set it to the union count
+of 33. I kept upstream's plain `setting()`, since the fork's old wide-toast hook no longer applies now
+that every toast is wide.
+
+##### crates/slot-ui/tests/toast.rs
+
+Upstream added the four tint banners to the fixed-banner list in
+`the_banner_says_what_happened_and_never_what_is_on_screen` and reformatted the file with rustfmt. The
+fork adds `Toast::ShaderShimmerlessGrid` after `Shader::ShaderShimmerless` in that same list. The list
+body merged cleanly; the three slice bounds conflicted, so I set `all[..N]`, `all[N..N + palettes]`
+and `all[N + palettes..]` to upstream's 32 plus the fork's one, 33.
+
+##### Checks
+
+All required checks passed. `fork-fmt` (and `fork-fmt --check`) reported the three fork `fit*.rs`
+files and left no diff; `fork-clippy` and `fork-clippy device` reported no compile errors and no lints
+in the fork's files; the device build
+`cargo build --profile device --target-dir target-device -p slot --no-default-features --features device`
+succeeded; and `fork-tests` ran every Shimmerless Grid test and passed, with the macOS-only
+`fit_shimmerless_grid` skipped on Linux as expected. `cargo test -p slot-store --lib --tests`,
+`cargo test -p slot-ui --lib --tests`, `cargo test -p slot-gfx --lib --tests` and
+`cargo test -p slot --lib --tests` were run. Two upstream test-isolation failures remain and are not
+the fork's: `slot-store`'s `header_index::keeping_every_entry_leaves_the_index_saved` and `slot`'s
+`header_index_boot::boot_drops_index_entries_for_games_no_longer_on_the_card` both fail only when run
+beside their sibling tests (a shared global header index), and both pass when run alone. No test
+failed for a missing libretro core, BIOS or display.
+
+### Checks
+
+| Check | Result |
+|---|---|
+| `sync_upstream.py fork-fmt --check`: rustfmt on the fork's own files | ✅ success |
+| `sync_upstream.py fork-clippy`: builds everything, lints the fork's own files | ✅ success |
+| `sync_upstream.py fork-clippy device`: the same for the device build | ✅ success |
+| `cargo build --profile device -p slot --no-default-features --features device` | ✅ success |
+| `sync_upstream.py fork-tests`: the fork's Shimmerless Grid tests (FORK-NOTES.md section 4) | ✅ success |
+| `cargo test --workspace --no-fail-fast --lib --bins --tests` (advisory: some tests need cores the runner lacks) | ⚠️ failure |
+
 ## 2026-11-09 14:16 UTC · upstream `0b95d32` → `3449869`
 
 Pull request: https://github.com/Maxcimkj/slot-gb-custom/pull/19

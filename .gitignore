@@ -29,6 +29,7 @@
 /.worktrees
 .superpowers/
 /.task/
+/target-check
 
 # Release trees and zips from task dist:device OUT=slot-<tag>
 /slot-v*/
